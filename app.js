@@ -40,7 +40,7 @@ app.use('/', routes);
 
 /************** Connect to MySQL **************/
 // Change password to the password for your local database
-var password = 'Grand.garramo88';
+var password = '';
 app.use(
     connection(mysql,{
         host: 'localhost',
