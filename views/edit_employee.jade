@@ -1,0 +1,69 @@
+extends layout
+
+block content
+  script function cancelAdd(){window.location.href = '/employees';}
+  h1=title
+  p #[a(href='/') home]
+  p #[a(href='../employees') employees]
+  form(method="post", action="/employees/edit/#{employees[0].employeeID}")
+    table(cellpadding="11", cellspacing="0")
+      tr
+        td 
+          strong First Name
+        td 
+          input(type="text", name="firstName", value="#{employees[0].firstName}", required)
+      tr
+        td 
+          strong Last Name
+        td 
+          input(type="text", name="lastName", value="#{employees[0].lastName}", required)
+      tr
+        td
+          strong Email
+        td
+          input(type="email", name="email", value="#{employees[0].email}", required)
+      tr
+        td 
+          strong Password
+        td 
+          input(type="password", name="password", value="#{employees[0].password}", required)
+      tr
+        td 
+          strong Department
+        td 
+          input(type="text", name="department", value="#{employees[0].department}", required)
+      tr
+        td 
+          strong Job Title
+        td 
+          input(type="text", name="title", value="#{employees[0].title}", required)
+      tr
+        td 
+          strong Restroom Usage (0 - 10)
+        td 
+          input(type="number", name="restroomUsage", value="#{employees[0].restroomUsage}", required)
+      tr
+        td 
+          strong Noise Preference (0 - 10)
+        td 
+          input(type="number", name="noisePreference", value="#{employees[0].noisePreference}", required)
+      tr
+        td 
+          strong Out of Desk (0 - 10)
+        td 
+          input(type="number", name="outOfDesk", value="#{employees[0].outOfDesk}", required)
+      tr
+        td 
+          strong File Path of Image
+        td 
+          input(type="text", name="pictureAddress", value="#{employees[0].pictureAddress}", required)
+      tr
+        td 
+          strong Permission Level
+        td 
+          input(type="text", name="permissionLevel", value="#{employees[0].permissionLevel}", required)
+      tr
+        td 
+          input(type="submit", name="submit", value="Save")
+        td 
+          input(type="button", name="cancel", value="Cancel", onClick="cancelAdd()")

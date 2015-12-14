@@ -1,0 +1,20 @@
+extends layout
+
+block content
+  h1 Welcome to the #{title} Test Page
+  p Querying the database
+  a(href='/') home
+  p The following is the list of desks in the database
+  table(border="1", cellpadding="7", cellspacing="0")
+    tr
+      td 
+        strong DeskID
+      td 
+        strong X-Coordinate
+      td 
+       strong Y-Coordinate
+    - each desk in desks
+      tr
+        td #{desk.deskID}
+        td #{desk.xcoordinate}
+        td #{desk.ycoordinate}

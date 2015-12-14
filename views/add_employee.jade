@@ -1,0 +1,69 @@
+extends layout
+
+block content
+  script function cancelAdd(){window.location.href = '/employees';}
+  h1=title
+  p #[a(href='/') home]
+  p #[a(href='/employees') employees]
+  form(method="post", action='/employees/add')
+    table(cellpadding="11", cellspacing="0")
+      tr
+        td 
+          strong First Name
+        td 
+          input(type="text", name="firstName", required)
+      tr
+        td 
+          strong Last Name
+        td 
+          input(type="text", name="lastName", required)
+      tr
+        td
+          strong Email
+        td
+          input(type="email", name="email", required)
+      tr
+        td 
+          strong Password
+        td 
+          input(type="password", name="password", required)
+      tr
+        td 
+          strong Department
+        td 
+          input(type="text", name="department", required)
+      tr
+        td 
+          strong Job Title
+        td 
+          input(type="text", name="title", required)
+      tr
+        td 
+          strong Restroom Usage (0 - 10)
+        td 
+          input(type="number", name="restroomUsage", required)
+      tr
+        td 
+          strong Noise Preference (0 - 10)
+        td 
+          input(type="number", name="noisePreference", required)
+      tr
+        td 
+          strong Out of Desk (0 - 10)
+        td 
+          input(type="number", name="outOfDesk", required)
+      tr
+        td 
+          strong File Path of Image
+        td 
+          input(type="text", name="pictureAddress", required)
+      tr
+        td 
+          strong Permission Level
+        td 
+          input(type="text", name="permissionLevel", required)
+      tr
+        td 
+          input(type="submit", name="Submit", value="Save")
+        td 
+          input(type="button", name="cancel", value="Cancel", onClick="cancelAdd()")

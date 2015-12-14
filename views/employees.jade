@@ -1,0 +1,30 @@
+extends layout
+
+block content
+  script function addUser(){window.location.href = '/employees/add';}
+  h1 Welcome to the #{title} Test Page
+  p Querying the database
+  p #[a(href='/') home]
+  div
+    button(onClick="addUser();") + Add
+  p The following is the list of employees in the database
+  table(border="1", cellpadding="7", cellspacing="0")
+    tr
+      th 
+        strong First Name
+      th 
+        strong Email
+      th(colspan="2")
+        strong Action
+    if employees.length > 0
+      - each employee in employees
+        tr
+          td #{employee.firstName}
+          td #{employee.email}
+          td.
+            #[a(href="../employees/edit/#{employee.employeeID}") Edit]
+          td.
+            #[a(href="../employees/delete/#{employee.employeeID}") Delete]
+    else
+      tr
+        td(colspan="3") No User
