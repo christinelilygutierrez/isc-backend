@@ -1,0 +1,24 @@
+extends layout
+
+block content
+  script function cancelAdd(){window.location.href = '/clusters';}
+  h1=title
+  p #[a(href='/') home]
+  p #[a(href='../../clusters') clusters]
+  form(method="post", action="/clusters/edit/#{clusters[0].clusterID}")
+    table(cellpadding="11", cellspacing="0")
+      tr
+        td 
+          strong X Coordinate
+        td 
+          input(type="text", name="xcoordinate", value="#{clusters[0].xcoordinate}", required)
+      tr
+        td 
+          strong Y Coordinate
+        td 
+          input(type="text", name="ycoordinate", value="#{clusters[0].ycoordinate}", required)
+      tr
+        td 
+          input(type="submit", name="submit", value="Save")
+        td 
+          input(type="button", name="cancel", value="Cancel", onClick="cancelAdd()")

@@ -1,0 +1,34 @@
+extends layout
+
+block content
+  script function cancelAdd(){window.location.href = '/desks';}
+  h1=title
+  p #[a(href='/') home]
+  p #[a(href='/desks') desks]
+  form(method="post", action='/desks/add')
+    table(cellpadding="11", cellspacing="0")
+      tr
+        td 
+          strong X Coordinate
+        td 
+          input(type="text", name="xcoordinate", required)
+      tr
+        td 
+          strong Y Coordinate
+        td 
+          input(type="text", name="ycoordinate", required)
+      tr
+        td
+          strong Width
+        td
+          input(type="text", name="width", required)
+      tr
+        td 
+          strong Height
+        td 
+          input(type="text", name="height", required)
+      tr
+        td 
+          input(type="submit", name="Submit", value="Save")
+        td 
+          input(type="button", name="cancel", value="Cancel", onClick="cancelAdd()")

@@ -1,20 +1,29 @@
 extends layout
 
 block content
+  script function addUser(){window.location.href = '/clusters/add';}
   h1 Welcome to the #{title} Test Page
   p Querying the database
-  a(href='/') home
+  p #[a(href='/') home]
+  div
+    button(onClick="addUser();") + Add
   p The following is the list of clusters in the database
   table(border="1", cellpadding="7", cellspacing="0")
     tr
       td 
-        strong clusterID
+        strong ClusterID
       td 
         strong X-Coordinate
       td 
         strong Y-Coordinate
+      td(colspan="2")
+        strong Action
     - each cluster in clusters
       tr
         td #{cluster.clusterID}
         td #{cluster.xcoordinate}
         td #{cluster.ycoordinate}
+        td.
+          #[a(href="../clusters/edit/#{cluster.clusterID}") Edit]
+        td.
+          #[a(href="../clusters/delete/#{cluster.clusterID}") Delete]

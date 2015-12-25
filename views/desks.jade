@@ -1,9 +1,12 @@
 extends layout
 
 block content
+  script function addUser(){window.location.href = '/desks/add';}
   h1 Welcome to the #{title} Test Page
   p Querying the database
-  a(href='/') home
+  p #[a(href='/') home]
+  div
+    button(onClick="addUser();") + Add
   p The following is the list of desks in the database
   table(border="1", cellpadding="7", cellspacing="0")
     tr
@@ -12,9 +15,15 @@ block content
       td 
         strong X-Coordinate
       td 
-       strong Y-Coordinate
+        strong Y-Coordinate
+      td(colspan="2")
+        strong Action
     - each desk in desks
       tr
         td #{desk.deskID}
         td #{desk.xcoordinate}
         td #{desk.ycoordinate}
+        td.
+          #[a(href="../desks/edit/#{desk.deskID}") Edit]
+        td.
+          #[a(href="../desks/delete/#{desk.deskID}") Delete]

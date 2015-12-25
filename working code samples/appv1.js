@@ -1,22 +1,39 @@
-/************** Module Dependencies **************/
 var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+
 var routes = require('./routes/index');
-var api_route = require('./routes/api');
+var users = require('./routes/users');
+var database = require('./routes/employees');
+
+// Create the connection to MySQL
+var mysql = require('mysql');
+var connection = mysql.createConnection({
+    host:'localhost',
+    user:'root',
+    password:'Grand.garramo88',
+    database:'seating_lucid_agency'
+});
+connection.connect(function(err){
+if(!err) {
+    console.log("Connected to seating_lucid_agency");  
+} else {
+    console.log("Error connecting database");    
+}
+});
+connection.end();
+
 var app = express();
 
-/************** Setting Views for Jade Pages **************/
 // view engine setup. It joins the current directory name with view such as /garre00/Documents/GitHub/isc-backend/views
 app.set('views', path.join(__dirname, 'views'));
 
 // Add a template engine with Express
 app.set('view engine', 'jade');
 
-/************** Use the Parser for the Jade Pages **************/
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('dev'));
@@ -24,18 +41,17 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-/************** Static files like js, CSS, images **************/
 // Reference all materials in the public directory
 app.use(express.static(path.join(__dirname, 'public'))); 
 
-
-/************** Routers for Web Pages **************/
 // Use the router for the webpages
 app.use('/', routes);
 
-app.use('/api', api_route);
+// Use the users
+app.use('/users', users);
 
-/************** 404 and Error Handlers **************/
+// Use the
+//app.use('/database', database);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -43,6 +59,8 @@ app.use(function(req, res, next) {
   err.status = 404;
   next(err);
 });
+
+// error handlers
 
 // development error handler
 // will print stacktrace

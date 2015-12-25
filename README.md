@@ -1,4 +1,4 @@
-# isc-backend
+﻿# isc-backend
 Backend of the Lucid Agency Ideal Seating Chart application for the database and ideal seating chart algorithm. It uses the express-generator to create the app.
 
 # Organization
@@ -54,15 +54,15 @@ Now your database should be configured properly. In order to run the app, do the
 4.) Start using npm.
  4.1) npm start
 5.) View the pages in a web broswer.
- 5.1) http://localhost:3000
+ 5.1) http://localhost:3001
  
 # Bin
-This folder contains www the sets up the port for the server as 3000 and makes app.js the entry point of the application.
+This folder contains www the sets up the port for the server as 3001 and makes app.js the entry point of the application.
 
 # Database
 The database folder contains two APIs:
   1.) A query API that returns JSON objects of queries or alters the database called queries.js
-  2.) A RESTful API that updates the webpages at http://localhost:3000 from the database
+  2.) A RESTful API that updates the webpages at http://localhost:3001 from the database
 I did not know which one we needed for the project, so I added both just in case. I can easily expand on both to have more queries.
 
 # Node Modules
@@ -78,4 +78,4 @@ This folder contains all of the webpages for the application. By default, expres
 This is a temporary folder where I keep working code so that my changes can be reverted if I mess up something with app.js or any other file.
 
 # Other Notes
-This backend uses routes and views for testing the connection to the database. In reality, the are not needed for the project since we have isc-management. The main goal is to use isc-management to make API calls to this project. I do not know how to do that so I am hoping Jeff can take a look and see if it can be done. If this project is unusable, feel free to scrap it and make a working model. This is my first attempt at using any type of framework and I wanted to see if I could help in some way.
+This backend uses routes and views for testing the connection to the database. In reality, they are not needed for the project since we have isc-management. The main goal is to use isc-management to make API calls to this project. I do not know how to do that so I am hoping Jeff can take a look and see if it can be done. If this project is unusable, feel free to scrap it and make a working model. This is my first attempt at using any type of framework and I wanted to see if I could help in some way.
