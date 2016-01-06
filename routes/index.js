@@ -1,22 +1,23 @@
 var express = require('express');
 var router = express.Router();
+var env = require('../env');
 
 /************** Modules for Database **************/
 var mysql = require('mysql');
 var render_queries = require('../database/render_api');
-var connection  = require('express-myconnection'); 
+var connection  = require('express-myconnection');
 
 /************** Connect to MySQL **************/
 // Change password to the password for your local database
 var password = '';
 router.use(
-    connection(mysql,{
-        host: 'localhost',
-        user: 'root',
-        password : password,
-        port : 3306, //port mysql
-        database:'seating_lucid_agency'
-    },'request')
+  connection(mysql, {
+    host: env.database.host,
+    user: env.database.user,
+    password : env.database.pass,
+    port : env.database.port, //port mysql
+    database: env.database.name
+  },'request')
 );
 
 /* GET home page. */
@@ -25,7 +26,7 @@ router.get('/', function(req, res, next) {
 });
 
 /************** RESTful API for Webpages **************/
-// GET Employees Page. 
+// GET Employees Page.
 router.get('/employees', render_queries.getAllEmployees);
 
 // GET the employee adding page
@@ -43,7 +44,7 @@ router.post('/employees/edit/:id', render_queries.confirmEditEmployee);
 // GET the employee to delete
 router.get('/employees/delete/:id', render_queries.deleteEmployee);
 
-// GET Desks Page. 
+// GET Desks Page.
 router.get('/desks', render_queries.getAllDesks);
 
 // GET the desk adding page
@@ -61,7 +62,7 @@ router.post('/desks/edit/:id', render_queries.confirmEditDesk);
 // GET the desk to delete
 router.get('/desks/delete/:id', render_queries.deleteDesk);
 
-// GET Clusters Page. 
+// GET Clusters Page.
 router.get('/clusters', render_queries.getAllClusters);
 
 // GET the cluster adding page

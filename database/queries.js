@@ -1,11 +1,13 @@
+var env = require('../env');
+
 // Function that returns an object that represents a connection
-exports.getConnection = function(password) {
+exports.getConnection = function() {
   var mysql = require('mysql');
   var connection = mysql.createConnection({
-    host:'localhost',
-    user:'root',
-    password: password,
-    database:'seating_lucid_agency'
+    host: env.database.host,
+    user: env.database.user,
+    password: env.database.pass,
+    database: env.database.name
   });
   return connection;
 };
