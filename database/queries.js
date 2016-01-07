@@ -247,10 +247,15 @@ exports.editToWhiteList = function(connection, values, employeeID, whitelistEmpl
 };
 
 exports.deleteCluster = function(connection, id) {
-  connection.query("DELETE FROM seating_lucid_agency.cluster WHERE clusterID = ?;",  id, function(err, result) {
+  connection.query("DELETE FROM seating_lucid_agency.uses WHERE clusterKey= ?;" +
+    "DELETE FROM seating_lucid_agency.composed_of WHERE IDofCluster= ?;" +
+    "DELETE FROM seating_lucid_agency.has_a_cluster_temp WHERE IDcluster= ?;" +
+    "DELETE FROM seating_lucid_agency.cluster WHERE clusterID = ?;"
+    , [id, id, id, id], function(err, result) {
     if (err) {
       console.log(err);
     }
+    connection
     console.log("Cluster %d deleted from database", id);
   });
 };
@@ -265,7 +270,10 @@ exports.deleteClusterToFloorPlan = function(connection, floorplanID, clusterID) 
 };
 
 exports.deleteDesk = function(connection, id) {
-  connection.query("DELETE FROM seating_lucid_agency.desk WHERE deskID = ?;", id, function(err, result) {
+  connection.query("DELETE FROM seating_lucid_agency.composed_of WHERE IDofDesk = ?;" +
+    "DELETE FROM seating_lucid_agency.sits_at WHERE IDdesk = ?;" +
+    "DELETE FROM seating_lucid_agency.desk WHERE deskID = ?;"
+    , [id, id, id], function(err, result) {
     if (err) {
       console.log(err);
     }
@@ -283,7 +291,10 @@ exports.deleteDeskToCluster = function(connection, clusterID, deskID) {
 };
 
 exports.deleteEmployee = function(connection, id) {
-  connection.query("DELETE FROM seating_lucid_agency.employee WHERE employeeID = ?;", id, function(err, result) {
+  connection.query("DELETE FROM seating_lucid_agency.sits_at WHERE IDemployee = ?;" +
+    "DELETE FROM seating_lucid_agency.has_a_emp_temp WHERE employeeID = ?;" +
+    "DELETE FROM seating_lucid_agency.employee WHERE employeeID = ?;"
+    , [id, id, id], function(err, result) {
     if (err) {
       console.log(err);
     }

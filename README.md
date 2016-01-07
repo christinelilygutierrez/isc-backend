@@ -7,13 +7,14 @@ Backend of the Lucid Agency Ideal Seating Chart application for the database and
 ├── bin
 │   └── www
 ├── database
-|   ├── queries.js
-|   └── render_api.js
+│   ├── queries.js
+│   └── render_api.js
+├── env.js
 ├── package.json
 ├── public
 │   ├── images
 │   ├── javascripts
-    |   ├── all.js
+│   │   ├── all.js
 │   └── stylesheets
 │       └── style.css
 ├── node_modules
@@ -21,14 +22,14 @@ Backend of the Lucid Agency Ideal Seating Chart application for the database and
 ├── routes
 │   └── index.js
 ├── views
-|   ├── add_employee.jade
-|   ├── clusters.jade
-|   ├── desks.jade
-|   ├── edit_employee.jade
-|   ├── employees.jade
-|   ├── error.jade
-|   ├── index.jade
-|   └── layout.jade
+│   ├── add_employee.jade
+│   ├── clusters.jade
+│   ├── desks.jade
+│   ├── edit_employee.jade
+│   ├── employees.jade
+│   ├── error.jade
+│   ├── index.jade
+│   └── layout.jade
 └──  working code samples
    └── app.js
 
@@ -44,9 +45,7 @@ Backend of the Lucid Agency Ideal Seating Chart application for the database and
 
 # How to Run
 This prototype of the backend was tested using a local instance of MySQL on my machine. In order for yours to run correctly, make the following changes:
-1.) In app.js, go to line 43 and change the password to the password for your instance of MySQL
- 1.1) Change host, user, port, and database accordingly if needed.
-2.) In /database/queries.js change host, user, port, and database accordingly if needed.
+1.) In env.js, and edit the host name, username, password, port number, and database name for the instance of MySQL
 
 Now your database should be configured properly. In order to run the app, do the following.
 3.) In the terminal, go the isc-backend directory.

@@ -12,11 +12,11 @@ var connection  = require('express-myconnection');
 var password = '';
 router.use(
   connection(mysql, {
-    host: env.database.host,
-    user: env.database.user,
-    password : env.database.pass,
-    port : env.database.port, //port mysql
-    database: env.database.name
+    host: env.database.host, // host name for MySQL
+    user: env.database.user, // username for MySQL
+    password : env.database.pass, // password for MySQL
+    port : env.database.port, //port MySQL
+    database: env.database.name // database name for MySQL
   },'request')
 );
 
