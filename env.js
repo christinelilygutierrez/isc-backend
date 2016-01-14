@@ -13,6 +13,7 @@ const env = {
     port: 3306
   },
   logErrors: true,
+  logQueries: false,
 };
 
 module.exports = env;
