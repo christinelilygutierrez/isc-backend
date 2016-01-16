@@ -15,11 +15,90 @@ dbconnect.connect(function(err){
   }
 });
 
-/* GET api page */
+// GET /api page
 router.get('/', function(req, res, next) {
   res.redirect('/');
 });
 
+
+// Routing for the Add queries
+router.post('/AddCluster',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var cluster = {
+      xcoordinate : data.xcoordinate,
+      ycoordinate : data.ycoordinate
+    };
+    queries.addCluster(dbconnect, cluster);
+  });
+});
+
+router.post('/AddDesk',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var desk = {
+      xcoordinate : data.xcoordinate,
+      ycoordinate : data.ycoordinate,
+      width : data.width,
+      height : data.height
+    };
+    queries.addDesk(dbconnect, desk);
+  });
+});
+
+router.post('/AddEmployee',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var employee = {
+      firstName : data.firstName,
+      lastName : data.lastName,
+      email : data.email,
+      password : data.password,
+      department : data.department,
+      title : data.title,
+      restroomUsage : data.restroomUsage,
+      noisePreference : data.noisePreference,
+      outOfDesk : data.outOfDesk,
+      pictureAddress : data.pictureAddress,
+      permissionLevel : data.permissionLevel
+    };
+    queries.addEmployee(dbconnect, employee);
+  });
+});
+
+//Routing for the Delete queries
+router.get('/DeleteEmployee/:id', function(req, res) {
+  var ID = req.params.id;
+  queries.deleteEmployee(dbconnect, ID);
+});
+
+// Routing for the Edit queries
+router.post('/EditEmployee/:id', function(req, res) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+
+  req.getConnection(function(err, connection) {
+    var employee = {
+      firstName : data.firstName,
+      lastName : data.lastName,
+      email : data.email,
+      password : data.password,
+      department : data.department,
+      title : data.title,
+      restroomUsage : data.restroomUsage,
+      noisePreference : data.noisePreference,
+      outOfDesk : data.outOfDesk,
+      pictureAddress : data.pictureAddress,
+      permissionLevel : data.permissionLevel
+    };
+    queries.editEmployee(dbconnect, employee, ID);
+  });
+});
+
+// Routing for the Get queries
 router.get('/AllBlacklistEmployees',function(req, res, next) {
   queries.getAllBlacklistEmployees(dbconnect, function(err, data){
     if (err && env.logErrors) {
