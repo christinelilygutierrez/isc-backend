@@ -69,10 +69,33 @@ router.post('/AddEmployee',function(req, res, next) {
   });
 });
 
+router.post('/AddOffice',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var office = {
+      companyName: data.companyName,
+      officeName: data.officeName,
+      officePhoneNumber: data.officePhoneNumber,
+      officeEmail: data.officeEmail,
+      officeStreetAddress: data.officeStreetAddress,
+      officeCity: data.officeCity,
+      officeState: data.officeState,
+      officeZipcode: data.officeZipcode
+    };
+    queries.addOffice(dbconnect, office);
+  });
+});
+
 //Routing for the Delete queries
 router.get('/DeleteEmployee/:id', function(req, res) {
   var ID = req.params.id;
   queries.deleteEmployee(dbconnect, ID);
+});
+
+router.get('/DeleteOffice/:id', function(req, res) {
+  var ID = req.params.id;
+  queries.deleteOffice(dbconnect, ID);
 });
 
 // Routing for the Edit queries
@@ -95,6 +118,25 @@ router.post('/EditEmployee/:id', function(req, res) {
       permissionLevel : data.permissionLevel
     };
     queries.editEmployee(dbconnect, employee, ID);
+  });
+});
+
+router.post('/EditOffice/:id',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+
+  req.getConnection(function(err, connection) {
+    var office = {
+      companyName: data.companyName,
+      officeName: data.officeName,
+      officePhoneNumber: data.officePhoneNumber,
+      officeEmail: data.officeEmail,
+      officeStreetAddress: data.officeStreetAddress,
+      officeCity: data.officeCity,
+      officeState: data.officeState,
+      officeZipcode: data.officeZipcode
+    };
+    queries.editOffice(dbconnect, office, ID);
   });
 });
 
@@ -170,6 +212,45 @@ router.get('/AllEmployees',function(req, res, next) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("The list of employees : ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/AllEmployeesConfidential',function(req, res, next) {
+  queries.getAllEmployees(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("The list of employees : ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/AllFloorPlans',function(req, res, next) {
+  queries.getAllFloorPlans(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("The list of floor plans : ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/AllOffices',function(req, res, next) {
+  queries.getAllOffices(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("The list of offices : ", data);
       res.json(data);
     } else {
       res.json(data);
@@ -333,6 +414,19 @@ router.get('/Employee/:id',function(req, res, next) {
   });
 });
 
+router.get('/EmployeeConfidential/:id',function(req, res, next) {
+  queries.getOneEmployeeConfidential(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Employee #" + req.params.id + ": " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/EmployeeBlackList/:id',function(req, res, next) {
   queries.getAllBlacklistEmployeesForOneEmployee(dbconnect, req.params.id, function(err, data){
     if (err && env.logErrors) {
@@ -345,6 +439,19 @@ router.get('/EmployeeBlackList/:id',function(req, res, next) {
     }
   });
 });
+
+router.get('/EmployeeBlackListConfidential/:id',function(req, res, next) {
+  queries.getAllBlacklistEmployeesForOneEmployeeConfidential(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Employee #'" + req.params.id + "'s blacklist: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+})
 
 router.get('/EmployeeDesk/:id',function(req, res, next) {
   queries.getDeskOfEmployee(dbconnect, req.params.id, function(err, data){
@@ -361,6 +468,19 @@ router.get('/EmployeeDesk/:id',function(req, res, next) {
 
 router.get('/EmployeeTeammates/:id',function(req, res, next) {
   queries.getAllTeammatesForOneEmployee(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Employee #" + req.params.id + "'s teammates:" , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/EmployeeTeammatesConfidential/:id',function(req, res, next) {
+  queries.getAllTeammatesForOneEmployeeConfidential(dbconnect, req.params.id, function(err, data){
     if (err && env.logErrors) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
@@ -398,12 +518,77 @@ router.get('/EmployeeWhiteList/:id',function(req, res, next) {
   });
 });
 
+router.get('/EmployeeWhiteListConfidential/:id',function(req, res, next) {
+  queries.getAllWhitelistEmployeesForOneEmployeeConfidential(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Employee #" + req.params.id + "'s whitelist: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/Floorplan/:id',function(req, res, next) {
+  queries.getOneFloorPlan(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Floorplan #" + req.params.id +": " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/FloorplanClusters/:id',function(req, res, next) {
   queries.getAllClustersOfOneFloorplan(dbconnect, req.params.id, function(err, data){
     if (err && env.logErrors) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Floorplan #" + req.params.id + "'s clusters: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/FloorPlanOfOffice/:id',function(req, res, next) {
+  queries.getFloorPlanOfOffice(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Floorplan of Office" + req.params.id + ": " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/Office/:id',function(req, res, next) {
+  queries.getOneOffice(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Office #" + req.params.id +": " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/OfficeOfEmployee/:id',function(req, res, next) {
+  queries.getOfficeOfEmployee(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Office # for Employee " + req.params.id +": " , data);
       res.json(data);
     } else {
       res.json(data);
