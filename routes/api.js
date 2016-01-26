@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var env = require('../env');
+var hasher = require('password-hash');
 
 /**************** Database Connection ****************/
 var queries = require('../database/queries');
@@ -56,7 +57,7 @@ router.post('/AddEmployee',function(req, res, next) {
       firstName : data.firstName,
       lastName : data.lastName,
       email : data.email,
-      password : data.password,
+      password : hasher.generate(data.password),
       department : data.department,
       title : data.title,
       restroomUsage : data.restroomUsage,
@@ -108,7 +109,7 @@ router.post('/EditEmployee/:id', function(req, res) {
       firstName : data.firstName,
       lastName : data.lastName,
       email : data.email,
-      password : data.password,
+      password : hasher.generate(data.password),
       department : data.department,
       title : data.title,
       restroomUsage : data.restroomUsage,
@@ -220,7 +221,7 @@ router.get('/AllEmployees',function(req, res, next) {
 });
 
 router.get('/AllEmployeesConfidential',function(req, res, next) {
-  queries.getAllEmployees(dbconnect, function(err, data){
+  queries.getAllEmployeesConfidential(dbconnect, function(err, data){
     if (err && env.logErrors) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {

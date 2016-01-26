@@ -855,3 +855,13 @@ exports.getAllWhitelistEmployeesForOneEmployeeConfidential = function(connection
     }
   });
 };
+
+exports.updateFloorplanNumberOfDesks = function(connection, floor_planID, callback) {
+  connection.query('UPDATE `seating_lucid_agency`.`floor_plan` SET `numberOfDesks` = (SELECT COUNT(E.employeeID) FROM seating_lucid_agency.employee as E, seating_lucid_agency.sits_at as S, seating_lucid_agency.desk as D, seating_lucid_agency.composed_of as K, seating_lucid_agency.cluster as C, seating_lucid_agency.uses as U WHERE U.floorplanKey = ? AND  U.clusterKey = C.clusterID AND C.clusterID = K.IDofCluster AND K.IDofDesk = D.deskID AND D.deskID = S.IDdesk AND S.IDemployee = E.employeeID ) WHERE `floor_planID` = ?;', [floor_planID, floor_planID], function(err, result) {
+    if(err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};
