@@ -636,6 +636,16 @@ exports.getAllEmployeesExceptOne = function(connection, employeeID, callback) {
   });
 };
 
+exports.getAllEmployeesForOneOffice = function(connection, officeID, callback) {
+  connection.query('SELECT E.employeeID, E.firstName, E.lastName, E.email, E.department, E.title, E.restroomUsage, E.noisePreference, E.outOfDesk, E.pictureAddress FROM seating_lucid_agency.employee AS E, seating_lucid_agency.sits_at AS S, seating_lucid_agency.desk AS D, seating_lucid_agency.composed_of AS CO, seating_lucid_agency.cluster AS C, seating_lucid_agency.uses AS U, seating_lucid_agency.floor_plan AS F, seating_lucid_agency.office AS O WHERE  O.officeID = ? AND O.officeID = F.officeID AND F.floor_planID = U.floorplanKey AND U.clusterKey = C.clusterID AND C.clusterID = CO.IDofCluster AND CO.IDofDesk = D.deskID AND D.deskID = S.IDdesk AND S.IDemployee = E.employeeID ORDER BY E.employeeID;', officeID, function(err, result) {
+    if(err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};
+
 exports.getOneEmployee = function(connection, employeeID, callback) {
   connection.query('SELECT seating_lucid_agency.employee.employeeID, seating_lucid_agency.employee.firstName, seating_lucid_agency.employee.lastName, seating_lucid_agency.employee.email, seating_lucid_agency.employee.department, seating_lucid_agency.employee.title, seating_lucid_agency.employee.restroomUsage, seating_lucid_agency.employee.noisePreference, seating_lucid_agency.employee.outOfDesk, seating_lucid_agency.employee.pictureAddress  FROM seating_lucid_agency.employee WHERE employeeID = ?', employeeID, function(err, result) {
     if(err) {

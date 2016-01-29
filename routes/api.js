@@ -33,6 +33,7 @@ router.post('/AddCluster',function(req, res, next) {
     };
     queries.addCluster(dbconnect, cluster);
   });
+  res.send("Cluster Added.");
 });
 
 router.post('/AddDesk',function(req, res, next) {
@@ -47,6 +48,7 @@ router.post('/AddDesk',function(req, res, next) {
     };
     queries.addDesk(dbconnect, desk);
   });
+  res.send("Desk Added.");
 });
 
 router.post('/AddEmployee',function(req, res, next) {
@@ -68,6 +70,7 @@ router.post('/AddEmployee',function(req, res, next) {
     };
     queries.addEmployee(dbconnect, employee);
   });
+  res.send("Employee added.");
 });
 
 router.post('/AddOffice',function(req, res, next) {
@@ -86,17 +89,20 @@ router.post('/AddOffice',function(req, res, next) {
     };
     queries.addOffice(dbconnect, office);
   });
+  res.send("Office added.");
 });
 
 //Routing for the Delete queries
 router.get('/DeleteEmployee/:id', function(req, res) {
   var ID = req.params.id;
   queries.deleteEmployee(dbconnect, ID);
+  res.send("Employee deleted.");
 });
 
 router.get('/DeleteOffice/:id', function(req, res) {
   var ID = req.params.id;
   queries.deleteOffice(dbconnect, ID);
+  res.send("Office deleted.");
 });
 
 // Routing for the Edit queries
@@ -120,6 +126,7 @@ router.post('/EditEmployee/:id', function(req, res) {
     };
     queries.editEmployee(dbconnect, employee, ID);
   });
+  res.send("Employee edited");
 });
 
 router.post('/EditOffice/:id',function(req, res, next) {
@@ -139,6 +146,7 @@ router.post('/EditOffice/:id',function(req, res, next) {
     };
     queries.editOffice(dbconnect, office, ID);
   });
+  res.send("Ofice edited");
 });
 
 // Routing for the Get queries
@@ -460,6 +468,19 @@ router.get('/EmployeeDesk/:id',function(req, res, next) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Employee #'" + req.params.id + "'s desk: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/EmployeesOfOffice/:id',function(req, res, next) {
+  queries.getAllEmployeesForOneOffice(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Office " + req.params.id + "'s employees: " , data);
       res.json(data);
     } else {
       res.json(data);
