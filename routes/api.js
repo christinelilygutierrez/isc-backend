@@ -2,6 +2,8 @@ var express = require('express');
 var router = express.Router();
 var env = require('../env');
 var hasher = require('password-hash');
+var jwt    = require('jsonwebtoken');
+var apiError = require('../database/api_errors');
 
 /**************** Database Connection ****************/
 var queries = require('../database/queries');
@@ -15,6 +17,123 @@ dbconnect.connect(function(err){
     console.log("Error connecting database");
   }
 });
+
+/**************** Login Implementationn ****************/
+router.post('/authenticate', function(req, res){
+  var employee=null;
+  try {
+     employee =JSON.parse(JSON.stringify(req.body));
+  } catch (e) {
+    res.json(apiError.errors("401","problems parsing json"));
+  }
+  var u= employee.email;
+  var p= employee.password;
+  if(u===undefined|| u===null || p===undefined || p===null){
+    res.json(apiError.errors("401", "Missing parameters"));
+  } else{
+    queries.getUser(dbconnect, employee, function(err, rows){
+      if(!err){
+        if(rows.length < 1){
+          res.json({ success: false, message: 'Authentication failed. User not found.' });
+        } else {
+            var dbUser=JSON.parse(JSON.stringify(rows[0]));
+            if(dbUser.email===u && dbUser.password===p) {
+              var token = jwt.sign(employee, "test", {
+                  expiresIn: "1d" // expires in 24 hours
+              });
+              res.json({
+                success: true,
+                message: 'Enjoy your token!',
+                token: token
+              });
+            } else{
+              res.json({ success: false, message: 'Authentication failed. Wrong password.' });
+            }
+        }
+      } else{
+        res.json({ success: false, message: 'Authentication failed. User not found.' });
+      }
+    });
+  }
+});
+
+// Mark for deletion since it is redundant
+router.post('/register', function(req, res){
+  console.log(req.body);
+  var user = null;
+  try {
+    user = JSON.parse(JSON.stringify(req.body));
+  } catch (e) {
+    res.json(apiError.errors("401","problems parsing json"));
+  }
+  var u = user.username;
+  var p = user.password;
+
+  if(u === undefined|| u === null || p === undefined || p === null) {
+    res.json(apiError.errors("401", "Missing parameters"));
+  } else{
+    queries.saveUser(dbconnect, user, function(err){
+      if(err){
+        res.json({ success: false, message: 'Registration failed' });
+      } else{
+        res.json({ success: true, message: 'Sucessfuly registered user '+ user.username.toString()});
+      }
+    })
+  }
+});
+
+// Prevents access to page unless token is present
+/*router.use(function(req, res, next){
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+   // decode token
+   if (token) {
+     // verifies secret and checks exp
+     jwt.verify(token, 'test', function(err, decoded) {
+       if (err) {
+         return res.json({ success: false, message: 'Failed to authenticate token.' });
+       } else {
+         // if everything is good, save to request for use in other routes
+         req.decoded = decoded;
+
+         console.log(req.decoded);
+         req.session.employee = req.decoded;
+         next();
+       }
+     });
+   } else {
+     // if there is no token
+     // return an error
+     return res.status(403).send({
+         success: false,
+         message: 'No token provided.'
+     });
+   }
+});*/
+
+// Mark for deletion since unimplemented
+router.get('/seed', function(req, res){
+  queries.seedUsers(dbconnect);
+  res.render("seed");
+});
+
+// Mark for deletion since unimplemented
+router.get('/users', function(req, res){
+  var users=[];
+  queries.getUsers(dbconnect, function(err, rows){
+    if(!err){
+      res.json(rows);
+    }
+    else{
+      res.json(users);
+    }
+  });
+});
+
+router.get('/authenticate', function(req, res){
+  res.json(apiError.errors("403","denied"));
+});
+
+/**************** RESTful API ****************/
 
 // GET /api page
 router.get('/', function(req, res, next) {

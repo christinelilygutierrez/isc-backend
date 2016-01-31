@@ -1,0 +1,16 @@
+<!DOCTYPE html >
+<html lang="en" ng-app="iscApp">
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+</head>
+<body ng-controller="RegisterController" >
+    <form method="Post">
+        <input type="text" name="username" ng-model="user.username" required><br>
+        <input type="password" name="pass" ng-model="user.password" required><br>
+        <input type="submit" name='register'  ng-click="register(user)" value="Register">
+    </form>
+</body>
+<script src="/javascripts/RegisterController.js"></script>
+</html>

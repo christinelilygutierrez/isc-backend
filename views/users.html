@@ -1,0 +1,28 @@
+<!DOCTYPE html >
+<html lang="en" ng-app="iscApp">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+</head>
+<body ng-controller="UsersController" >
+  <h1>Users</h1>
+  <div class="container">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Password</th>
+        <tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="user in users">
+          <td>{{user.username}}</td>
+          <td>{{user.password}}</td>
+        </tr>
+      </tbody>
+    </table>
+   </div>
+</body>
+<script src="/javascripts/UsersController.js"></script>
+</html>

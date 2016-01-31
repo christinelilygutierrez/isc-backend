@@ -6,8 +6,18 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var routes = require('./routes/index');
+var users = require('./routes/users');
 var api_route = require('./routes/api');
+var session = require('express-session');
 var app = express();
+
+var sess = {
+  secret: 'test',
+  resave: true,
+  saveUninitialized: true,
+  employee: {}
+};
+app.use(session(sess));
 
 /************** Setting Views for Jade Pages **************/
 // view engine setup. It joins the current directory name with view such as /garre00/Documents/GitHub/isc-backend/views
@@ -46,6 +56,8 @@ app.all('*', function(req, res, next) {
 app.use('/', routes);
 
 app.use('/api', api_route);
+
+app.use('/users', users);
 
 /************** 404 and Error Handlers **************/
 

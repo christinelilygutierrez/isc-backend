@@ -1,0 +1,16 @@
+<!DOCTYPE html >
+<html lang="en" ng-app="iscApp">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+</head>
+<body ng-controller="LoginController" >
+    <form method="Post">
+        <input type="email" name="email" ng-model="employee.email" required><br>
+        <input type="password" name="pass" ng-model="employee.password" required><br>
+        <input type="submit" name='login'  ng-click="login(employee)" value="Login">
+    </form>
+</body>
+<script src="/javascripts/LoginController.js"></script>
+</html>

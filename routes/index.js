@@ -1,6 +1,9 @@
 var express = require('express');
 var router = express.Router();
 var env = require('../env');
+var path = require('path');
+var jwt    = require('jsonwebtoken');
+var apiError = require('../database/api_errors');
 
 /************** Modules for Database **************/
 var mysql = require('mysql');
@@ -20,8 +23,54 @@ router.use(
   },'request')
 );
 
+// Implement Access controller
+function requireRole(role) {
+    return function(req, res, next) {
+        if(req.session.employee && req.session.employee.permissionLevel === role)
+            next();
+        else
+            res.send(403);
+    }
+}
+
+// Login
+router.get('/login',function(req, res, next){
+  res.sendFile(path.join(__dirname+'./../views/login.html'));
+});
+router.get('/register',function(req, res, next){
+  res.sendFile(path.join(__dirname+'./../views/register.html'));
+});
+
+// router.use(function(req, res, next){
+//   var token = req.body.token || req.query.token || req.headers['x-access-token'];
+//    // decode token
+//    if (token) {
+//      // verifies secret and checks exp
+//      jwt.verify(token, 'test', function(err, decoded) {
+//        if (err) {
+//          return res.json({ success: false, message: 'Failed to authenticate token.' });
+//        } else {
+//          // if everything is good, save to request for use in other routes
+//          req.decoded = decoded;
+//
+//          console.log(req.decoded);
+//          req.session.employee = req.decoded;
+//          next();
+//        }
+//      });
+//    } else {
+//      // if there is no token
+//      // return an error
+//      return res.status(403).send({
+//          success: false,
+//          message: 'No token provided.'
+//      });
+//    }
+// });
+
 /* GET home page. */
 router.get('/', function(req, res, next) {
+  //requireRole("user");
   res.render('index', {title: 'Lucid Agency Express Framework Testing'});
 });
 

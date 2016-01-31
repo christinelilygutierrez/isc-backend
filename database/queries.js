@@ -1,4 +1,5 @@
 var env = require('../env');
+var uuid = require('node-uuid');
 
 // Function that returns an object that represents a connection
 exports.getConnection = function() {
@@ -12,6 +13,71 @@ exports.getConnection = function() {
   return connection;
 };
 
+// Login
+exports.addUser=function(connection){
+  // connection.query("select * from employees",  function(err, rows, fields){
+  //   if(err) throw err;
+  //   else console.log(rows);
+  // });
+};
+exports.seedUsers=function(connection){
+  // var a={
+  //   'username': 'a',
+  //   'password': 'pass',
+  //   'uuid': uuid.v4()
+  // };
+  // var b={
+  //   'username': 'b',
+  //   'password': 'pass',
+  //   'uuid': uuid.v4()
+  // };
+  // connection.query("insert into employees(uuid, username, password) values(?, ?, ?)", [
+  //   a['uuid'],
+  //   a['username'],
+  //   a['password']
+  // ]);
+  // connection.query("insert into employees(uuid, username, password) values(?, ?, ?)", [
+  //   b['uuid'],
+  //   b['username'],
+  //   b['password']
+  // ]);
+};
+
+exports.getUser=function(connection, user, callback){
+  connection.query("select * from employee where email = ?", [user.email], function(err,rows){
+    if(err) {
+       callback(err, null);
+     } else {
+       callback(null, (rows));
+     }
+  });
+};
+
+exports.getUsers=function(connection, callback){
+  connection.query("select * from employee;", function(err, rows){
+    if(err){
+      callback(err, null);
+    }
+    else{
+      callback(null, (rows));
+    }
+  });
+};
+
+exports.saveUser=function(connection, user, callback){
+  // var u= user.username;
+  // var p= user.password;
+  //   if(err){
+  // connection.query("insert into employees(uuid, username, password) values(?, ?, ?)",[uuid.v4(), u, p],function(err){
+  //     callback(err);
+  //   }
+  //   else{
+  //     callback(null);
+  //   }
+  // });
+};
+
+// Other Queries
 exports.addCluster = function(connection, values) {
   connection.query("INSERT INTO seating_lucid_agency.cluster SET ?;", values, function(err, result) {
     if (err) {
