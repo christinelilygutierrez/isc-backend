@@ -1,4 +1,4 @@
-exports.errors=function(code, codeError ){
+exports.errors = function(code, codeError ){
   var res = {
      status : code.toString(),
      message: codeError.toString()

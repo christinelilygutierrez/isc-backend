@@ -1,9 +1,11 @@
 var express = require('express');
 var router = express.Router();
 var env = require('../env');
-var hasher = require('password-hash');
 var jwt    = require('jsonwebtoken');
 var apiError = require('../database/api_errors');
+var uuid = require('node-uuid');
+var moment = require('moment');
+//var bcrypt = require('bcrypt');
 
 /**************** Database Connection ****************/
 var queries = require('../database/queries');
@@ -17,29 +19,76 @@ dbconnect.connect(function(err){
     console.log("Error connecting database");
   }
 });
+/*
+var multer  = require('multer');
+// File Upload
+var storage = multer.diskStorage({
+  destination: function (req, file, callback) {
+    callback(null, 'public/documents')
+  },
+  filename: function (req, file, callback) {
+    //get filename and change it to a new name using a uuid
+    //for example the following file in public/documents folder with fileName
+    //367db834-5dfc-43c3-971e-c7cad28c36b91454213265978.jpg
+    //https://localhost/documents/367db834-5dfc-43c3-971e-c7cad28c36b91454213265978.jpg
+    var originalname =file.originalname;
+    var fileExtension = originalname.slice((originalname.lastIndexOf(".") - 1 >>> 0) + 2);
+    var fileName = uuid.v4();
+    var newFileName = fileName + Date.now() + '.'+ fileExtension;
+    callback(null, newFileName);
+  }
+});
+var upload = multer({ storage: storage });
+
+router.post('/upload', upload.single('image'), function (req, res, next) {
+  console.log("success");
+  //console.log(req.file);
+
+  var file = req.file;
+  //    file is uploaded
+  //    now update the database with the respective info
+  //    fieldname	Field name specified in the form
+  //    originalname	Name of the file on the user's computer
+  //    encoding	Encoding type of the file
+  //    mimetype	Mime type of the file
+  //    size	Size of the file in bytes
+  //    destination	The folder to which the file has been saved
+  //    filename	The name of the file within the destination
+  //    path	The full path to the uploaded file
+  console.log(file);
+  //save file.filename to the database to the corresponding user that is req.session.employee
+  res.status(204).end();
+});*/
 
 /**************** Login Implementationn ****************/
-router.post('/authenticate', function(req, res){
-  var employee=null;
+
+// Create a token if an employee signs in
+router.post('/Authenticate', function(req, res){
+  var employee = null;
+  var u;
+  var p;
+  var dbUser;
+  var token;
+
   try {
-     employee =JSON.parse(JSON.stringify(req.body));
+     employee = JSON.parse(JSON.stringify(req.body));
   } catch (e) {
     res.json(apiError.errors("401","problems parsing json"));
   }
-  var u= employee.email;
-  var p= employee.password;
-  if(u===undefined|| u===null || p===undefined || p===null){
+  u = employee.email;
+  p = employee.password;
+  if ( u === undefined || u === null || p === undefined || p === null) {
     res.json(apiError.errors("401", "Missing parameters"));
-  } else{
+  } else {
     queries.getUser(dbconnect, employee, function(err, rows){
-      if(!err){
-        if(rows.length < 1){
+      if (!err) {
+        if (rows.length < 1) {
           res.json({ success: false, message: 'Authentication failed. User not found.' });
         } else {
-            var dbUser=JSON.parse(JSON.stringify(rows[0]));
-            if(dbUser.email===u && dbUser.password===p) {
-              var token = jwt.sign(employee, "test", {
-                  expiresIn: "1d" // expires in 24 hours
+            dbUser = JSON.parse(JSON.stringify(rows[0]));
+            if (dbUser.email === u && p === dbUser.password) {
+              token = jwt.sign(employee, "test", {
+                  expiresIn: moment().add(1, 'days').valueOf() // expires in 24 hours
               });
               res.json({
                 success: true,
@@ -58,7 +107,7 @@ router.post('/authenticate', function(req, res){
 });
 
 // Mark for deletion since it is redundant
-router.post('/register', function(req, res){
+/*router.post('/register', function(req, res){
   console.log(req.body);
   var user = null;
   try {
@@ -68,7 +117,6 @@ router.post('/register', function(req, res){
   }
   var u = user.username;
   var p = user.password;
-
   if(u === undefined|| u === null || p === undefined || p === null) {
     res.json(apiError.errors("401", "Missing parameters"));
   } else{
@@ -80,6 +128,38 @@ router.post('/register', function(req, res){
       }
     })
   }
+});*/
+
+// Verify the token and decode
+router.get('/Verify/', function(req, res, next) {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+   // decode token
+   if (token) {
+     // verifies secret and checks exp
+     jwt.verify(token, 'test', function(err, decoded) {
+       if (err) {
+         res.json({ success: false, message: 'Failed to authenticate token.' });
+       } else {
+         // If everything is good, save to request for use in other routes
+         if (decoded.exp <= Date.now()) {
+           return res.json(apiError.errors("400", "Token has expired"));
+         } else {
+           req.decoded = decoded;
+           console.log(req.decoded);
+           queries.validatedToken(dbconnect, req.decoded.email, req.decoded.password, function(err, results) {
+             return res.json(results);
+           });
+         }
+       }
+     });
+   } else {
+     // if there is no token
+     // return an error
+     return res.status(403).send({
+         success: false,
+         message: 'No token provided.'
+     });
+   }
 });
 
 // Prevents access to page unless token is present
@@ -110,7 +190,7 @@ router.post('/register', function(req, res){
    }
 });*/
 
-// Mark for deletion since unimplemented
+/*// Mark for deletion since unimplemented
 router.get('/seed', function(req, res){
   queries.seedUsers(dbconnect);
   res.render("seed");
@@ -127,21 +207,32 @@ router.get('/users', function(req, res){
       res.json(users);
     }
   });
-});
+});*/
 
-router.get('/authenticate', function(req, res){
+router.get('/Authenticate', function(req, res){
   res.json(apiError.errors("403","denied"));
 });
 
 /**************** RESTful API ****************/
-
 // GET /api page
 router.get('/', function(req, res, next) {
   res.redirect('/');
 });
 
-
 // Routing for the Add queries
+router.post('/AddCompany',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var company = {
+      companyName : data.companyName
+    };
+    queries.addCompany(dbconnect, company);
+  });
+  res.send("Company Added.");
+});
+
+
 router.post('/AddCluster',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
 
@@ -172,13 +263,17 @@ router.post('/AddDesk',function(req, res, next) {
 
 router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
-
+  //var salt = bcrypt.genSaltSync(10);
+  //var hash = bcrypt.hashSync(data.password, salt);
+  //console.log(hash);
+  console.log('Fine till here');
   req.getConnection(function(err, connection) {
+    console.log('Starting employee');
     var employee = {
       firstName : data.firstName,
       lastName : data.lastName,
       email : data.email,
-      password : hasher.generate(data.password),
+      password : 'yes',
       department : data.department,
       title : data.title,
       restroomUsage : data.restroomUsage,
@@ -187,6 +282,7 @@ router.post('/AddEmployee',function(req, res, next) {
       pictureAddress : data.pictureAddress,
       permissionLevel : data.permissionLevel
     };
+    console.log(employee);
     queries.addEmployee(dbconnect, employee);
   });
   res.send("Employee added.");
@@ -197,7 +293,6 @@ router.post('/AddOffice',function(req, res, next) {
 
   req.getConnection(function(err, connection) {
     var office = {
-      companyName: data.companyName,
       officeName: data.officeName,
       officePhoneNumber: data.officePhoneNumber,
       officeEmail: data.officeEmail,
@@ -212,6 +307,12 @@ router.post('/AddOffice',function(req, res, next) {
 });
 
 //Routing for the Delete queries
+router.get('/DeleteCompany/:id', function(req, res) {
+  var ID = req.params.id;
+  queries.deleteCompany(dbconnect, ID);
+  res.send("Company deleted.");
+});
+
 router.get('/DeleteEmployee/:id', function(req, res) {
   var ID = req.params.id;
   queries.deleteEmployee(dbconnect, ID);
@@ -224,17 +325,65 @@ router.get('/DeleteOffice/:id', function(req, res) {
   res.send("Office deleted.");
 });
 
+router.get('/deleteEntireBlackListForEmployee/:id', function(req, res) {
+  var ID = req.params.id;
+  queries.deleteEntireBlackListForEmploye(dbconnect, ID);
+  res.send("Blacklist for employee %d deleted.", ID);
+});
+
+router.get('/deleteEntireWhiteListForEmployee/:id', function(req, res) {
+  var ID = req.params.id;
+  queries.deleteEntireWhiteListForEmploye(dbconnect, ID);
+  res.send("Whitelist for employee %d deleted.", ID);
+});
+
 // Routing for the Edit queries
+router.post('/EditCompany/:id', function(req, res) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+
+  req.getConnection(function(err, connection) {
+    var company = {
+      companyName : data.companyName
+    };
+    queries.editCompany(dbconnect, company, ID);
+  });
+  res.send("Company edited");
+});
+
+router.post('/UpdateCoworkers/:id', function(req, res) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+  var whitelist = data.whitelist;
+  var blacklist = data.blacklist;
+  var employee = null;
+
+  req.getConnection(function(err, connection) {
+    queries.deleteEntireBlackListForEmployee(dbconnect, ID);
+    queries.deleteEntireWhiteListForEmployee(dbconnect, ID);
+    for (employee in blacklist) {
+      queries.addToBlackList(dbconnect, {idemployee_blacklist: ID, employee_blacklist_teammate_id: blacklist[employee].employeeID});
+    }
+    for (employee in whitelist) {
+      queries.addToWhiteList(dbconnect, {idemployee_whitelist: ID, employee_whitelist_teammate_id: whitelist[employee].employeeID});
+    }
+  });
+  res.send("Coworkers Updated;");
+});
+
 router.post('/EditEmployee/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
+  //var salt = bcrypt.genSaltSync(10);
+  //var hash = bcrypt.hashSync(data.password, salt);
+  console.log(hash);
 
   req.getConnection(function(err, connection) {
     var employee = {
       firstName : data.firstName,
       lastName : data.lastName,
       email : data.email,
-      password : hasher.generate(data.password),
+      password : hash,
       department : data.department,
       title : data.title,
       restroomUsage : data.restroomUsage,
@@ -254,7 +403,6 @@ router.post('/EditOffice/:id',function(req, res, next) {
 
   req.getConnection(function(err, connection) {
     var office = {
-      companyName: data.companyName,
       officeName: data.officeName,
       officePhoneNumber: data.officePhoneNumber,
       officeEmail: data.officeEmail,
@@ -275,6 +423,32 @@ router.get('/AllBlacklistEmployees',function(req, res, next) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("The list of employees and their blacklists : ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/AllCompanies',function(req, res, next) {
+  queries.getAllCompanies(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if(env.logQueries) {
+      console.log("The list of companies : ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/AllCompaniesForAllOffices',function(req, res, next) {
+  queries.getCompaniesForAllOffices(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if(env.logQueries) {
+      console.log("The list of companies : ", data);
       res.json(data);
     } else {
       res.json(data);
@@ -477,6 +651,32 @@ router.get('/AllWhitelistEmployees',function(req, res, next) {
   });
 });
 
+router.get('/Company/:id',function(req, res, next) {
+  queries.getOneCompany(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Company #" + req.params.id + ": " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/CompanyForOffice/:id',function(req, res, next) {
+  queries.getCompanyForOneOffice(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Office #" + req.params.id + ": " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/Cluster/:id',function(req, res, next) {
   queries.getOneCluster(dbconnect, req.params.id, function(err, data){
     if (err && env.logErrors) {
@@ -652,6 +852,19 @@ router.get('/EmployeeWhiteList/:id',function(req, res, next) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Employee #" + req.params.id + "'s whitelist: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/EmployeesNotInWhiteListOrBlackList/:employeeID/:officeID',function(req, res, next) {
+  queries.getAllEmployeesNotInWhiteListOrBlackListForOffice(dbconnect, req.params.employeeID, req.params.officeID, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("All employees not in whitelist or blacklist of #" + req.params.emloyeeID + ": ", data);
       res.json(data);
     } else {
       res.json(data);
