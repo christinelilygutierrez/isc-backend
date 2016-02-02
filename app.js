@@ -53,11 +53,10 @@ app.all('*', function(req, res, next) {
 
 /************** Routers for Web Pages **************/
 // Use the router for the webpages
+app.use('/', routes);
 app.use('/api', api_route);
 
 //app.use('/users', users);
-
-app.use('/', routes);
 
 /************** 404 and Error Handlers **************/
 

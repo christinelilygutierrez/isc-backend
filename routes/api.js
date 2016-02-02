@@ -5,7 +5,7 @@ var jwt    = require('jsonwebtoken');
 var apiError = require('../database/api_errors');
 var uuid = require('node-uuid');
 var moment = require('moment');
-//var bcrypt = require('bcrypt');
+var bcrypt = require('bcrypt');
 
 /**************** Database Connection ****************/
 var queries = require('../database/queries');
@@ -19,7 +19,7 @@ dbconnect.connect(function(err){
     console.log("Error connecting database");
   }
 });
-/*
+
 var multer  = require('multer');
 // File Upload
 var storage = multer.diskStorage({
@@ -58,7 +58,7 @@ router.post('/upload', upload.single('image'), function (req, res, next) {
   console.log(file);
   //save file.filename to the database to the corresponding user that is req.session.employee
   res.status(204).end();
-});*/
+});
 
 /**************** Login Implementationn ****************/
 
@@ -86,7 +86,8 @@ router.post('/Authenticate', function(req, res){
           res.json({ success: false, message: 'Authentication failed. User not found.' });
         } else {
             dbUser = JSON.parse(JSON.stringify(rows[0]));
-            if (dbUser.email === u && p === dbUser.password) {
+            if (dbUser.email === u && bcrypt.compareSync(p, dbUser.password)) {
+              employee.password = dbUser.password;
               token = jwt.sign(employee, "test", {
                   expiresIn: moment().add(1, 'days').valueOf() // expires in 24 hours
               });
@@ -145,7 +146,7 @@ router.get('/Verify/', function(req, res, next) {
            return res.json(apiError.errors("400", "Token has expired"));
          } else {
            req.decoded = decoded;
-           console.log(req.decoded);
+           //console.log(req.decoded);
            queries.validatedToken(dbconnect, req.decoded.email, req.decoded.password, function(err, results) {
              return res.json(results);
            });
@@ -263,27 +264,26 @@ router.post('/AddDesk',function(req, res, next) {
 
 router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
-  //var salt = bcrypt.genSaltSync(10);
-  //var hash = bcrypt.hashSync(data.password, salt);
-  //console.log(hash);
-  console.log('Fine till here');
-  req.getConnection(function(err, connection) {
-    console.log('Starting employee');
-    var employee = {
-      firstName : data.firstName,
-      lastName : data.lastName,
-      email : data.email,
-      password : 'yes',
-      department : data.department,
-      title : data.title,
-      restroomUsage : data.restroomUsage,
-      noisePreference : data.noisePreference,
-      outOfDesk : data.outOfDesk,
-      pictureAddress : data.pictureAddress,
-      permissionLevel : data.permissionLevel
-    };
-    console.log(employee);
-    queries.addEmployee(dbconnect, employee);
+
+  bcrypt.genSalt(10, function(err, salt) {
+    bcrypt.hash(data.password, salt, function(err, hash) {
+      req.getConnection(function(err, connection) {
+        var employee = {
+          firstName : data.firstName,
+          lastName : data.lastName,
+          email : data.email,
+          password : hash,
+          department : data.department,
+          title : data.title,
+          restroomUsage : data.restroomUsage,
+          noisePreference : data.noisePreference,
+          outOfDesk : data.outOfDesk,
+          pictureAddress : data.pictureAddress,
+          permissionLevel : data.permissionLevel
+        };
+        queries.addEmployee(dbconnect, employee);
+      });
+    });
   });
   res.send("Employee added.");
 });
@@ -374,25 +374,26 @@ router.post('/UpdateCoworkers/:id', function(req, res) {
 router.post('/EditEmployee/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
-  //var salt = bcrypt.genSaltSync(10);
-  //var hash = bcrypt.hashSync(data.password, salt);
-  console.log(hash);
 
-  req.getConnection(function(err, connection) {
-    var employee = {
-      firstName : data.firstName,
-      lastName : data.lastName,
-      email : data.email,
-      password : hash,
-      department : data.department,
-      title : data.title,
-      restroomUsage : data.restroomUsage,
-      noisePreference : data.noisePreference,
-      outOfDesk : data.outOfDesk,
-      pictureAddress : data.pictureAddress,
-      permissionLevel : data.permissionLevel
-    };
-    queries.editEmployee(dbconnect, employee, ID);
+  bcrypt.genSalt(10, function(err, salt) {
+    bcrypt.hash(data.password, salt, function(err, hash) {
+      req.getConnection(function(err, connection) {
+        var employee = {
+          firstName : data.firstName,
+          lastName : data.lastName,
+          email : data.email,
+          password : hash,
+          department : data.department,
+          title : data.title,
+          restroomUsage : data.restroomUsage,
+          noisePreference : data.noisePreference,
+          outOfDesk : data.outOfDesk,
+          pictureAddress : data.pictureAddress,
+          permissionLevel : data.permissionLevel
+        };
+        queries.editEmployee(dbconnect, employee, ID);
+      });
+    });
   });
   res.send("Employee edited");
 });

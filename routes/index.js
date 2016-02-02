@@ -12,7 +12,6 @@ var connection  = require('express-myconnection');
 
 /************** Connect to MySQL **************/
 // Change password to the password for your local database
-var password = '';
 router.use(
   connection(mysql, {
     host: env.database.host, // host name for MySQL
