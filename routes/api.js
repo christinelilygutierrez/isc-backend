@@ -281,7 +281,34 @@ router.post('/AddEmployee',function(req, res, next) {
           pictureAddress : data.pictureAddress,
           permissionLevel : data.permissionLevel
         };
-        queries.addEmployee(dbconnect, employee);
+        queries.addEmployee(dbconnect, employee, function (err) {
+          if (err) {
+            return res.json({error: err});
+          } else {
+            queries.getUser(dbconnect, {email: data.email}, function(err, results) {
+              if (err && env.logErrors) {
+                console.log("ERROR : ", err);
+              } else {
+                //console.log("User: ");
+                //console.log(results[0]);
+                var employeeID = results[0].employeeID;
+                //console.log("Original Data");
+                //console.log(data);
+
+                queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
+                for (var item in data.teammates) {
+                  queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: data.teammates[item].employeeID});
+                }
+                for (var item in data.blacklist) {
+                  queries.addToBlackList(dbconnect, {idemployee_blacklist: employeeID, employee_blacklist_teammate_id: data.blacklist[item].employeeID});
+                }
+                for (var item in data.whitelist) {
+                  queries.addToWhiteList(dbconnect, {idemployee_whitelist: employeeID, employee_whitelist_teammate_id: data.whitelist[item].employeeID});
+                }
+              }
+            });
+          }
+        });
       });
     });
   });
@@ -305,6 +332,37 @@ router.post('/AddOffice',function(req, res, next) {
   });
   res.send("Office added.");
 });
+
+router.post('/AddTeammatesToEmployee',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var adder = [];
+    var employeeID = data.employeeID;
+
+    for (var item in data.teammates) {
+      adder.push(item.employeeID);
+    }
+    for (var i in adder) {
+        queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: adder[i]});
+    }
+  });
+  res.send("Teammates added to an employee.");
+});
+
+router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var adder = {
+      employeeID : data.employeeID,
+      rangeID : data.temperatureRangeID
+    };
+    queries.addRangeToEmployee(dbconnect, adder);
+  });
+  res.send("Temperature range added to an employee.");
+});
+
 
 //Routing for the Delete queries
 router.get('/DeleteCompany/:id', function(req, res) {
@@ -957,6 +1015,19 @@ router.get('/TemperatureRange/:id',function(req, res, next) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Floorplan #" + req.params.id + "'s clusters: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/User/:id',function(req, res, next) {
+  queries.getUser(dbconnect, { email : req.params.id }, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("User data: " , data);
       res.json(data);
     } else {
       res.json(data);
