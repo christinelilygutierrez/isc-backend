@@ -6,6 +6,8 @@ var apiError = require('../database/api_errors');
 var uuid = require('node-uuid');
 var moment = require('moment');
 var bcrypt = require('bcrypt');
+var csvParser = require('csv-parse');
+var fs = require('fs');
 
 /**************** Database Connection ****************/
 var queries = require('../database/queries');
@@ -40,24 +42,37 @@ var storage = multer.diskStorage({
 });
 var upload = multer({ storage: storage });
 
-router.post('/upload', upload.single('image'), function (req, res, next) {
+router.post('/upload/image', upload.single('image'), function (req, res, next) {
   console.log("success");
   //console.log(req.file);
 
   var file = req.file;
-  //    file is uploaded
-  //    now update the database with the respective info
-  //    fieldname	Field name specified in the form
-  //    originalname	Name of the file on the user's computer
-  //    encoding	Encoding type of the file
-  //    mimetype	Mime type of the file
-  //    size	Size of the file in bytes
-  //    destination	The folder to which the file has been saved
-  //    filename	The name of the file within the destination
-  //    path	The full path to the uploaded file
-  console.log(file);
-  //save file.filename to the database to the corresponding user that is req.session.employee
+
+
+  console.log(file.filename);
+
   res.status(204).end();
+});
+router.post('/upload/csv', upload.single('csv'), function (req, res, next) {
+  //console.log("success");
+  //console.log(req.file);
+
+  var file = req.file;
+  var rs = fs.createReadStream(file.path);
+  parser = csvParser({columns: true}, function(err, employees){
+    var values=[];
+    for( var i in employees){
+      //gets the employee
+      employee= JSON.parse(JSON.stringify(employees[i]));
+      //converts json to array
+      var arr = Object.keys(employee).map(function(k) { return employee[k]});
+      values.push(arr);
+    }
+    queries.bulkInsert(dbconnect, values);
+});
+rs.pipe(parser);
+//console.log(file.filename);
+res.status(204).end();
 });
 
 /**************** Login Implementationn ****************/
