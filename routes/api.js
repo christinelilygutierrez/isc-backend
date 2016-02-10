@@ -40,7 +40,7 @@ var storage = multer.diskStorage({
 });
 var upload = multer({ storage: storage });
 
-router.post('/upload', upload.single('image'), function (req, res, next) {
+router.post('/Upload', upload.single('image'), function (req, res, next) {
   console.log("success");
   //console.log(req.file);
 
@@ -313,6 +313,31 @@ router.post('/AddEmployee',function(req, res, next) {
     });
   });
   res.send("Employee added.");
+});
+
+router.post('/AddEmployees',function(req, res, next) {
+  var values = JSON.parse(JSON.stringify(req.body));
+  var values = values.employees;
+  for (var data in values) {
+    var salt = bcrypt.genSaltSync(10);
+    var hash = bcrypt.hashSync(values[data].password, salt);
+    var employee = {
+      firstName : values[data].firstName,
+      lastName : values[data].lastName,
+      email : values[data].email,
+      password : hash,
+      department : values[data].department,
+      title : values[data].title,
+      restroomUsage : values[data].restroomUsage,
+      noisePreference : values[data].noisePreference,
+      outOfDesk : values[data].outOfDesk,
+      pictureAddress : values[data].pictureAddress,
+      permissionLevel : values[data].permissionLevel
+    };
+    queries.addEmployee(dbconnect, employee, function (err) {
+    });
+  }
+  return res.send("Employees added.");
 });
 
 router.post('/AddOffice',function(req, res, next) {
