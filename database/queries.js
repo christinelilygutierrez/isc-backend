@@ -27,14 +27,6 @@ exports.bulkInsert=function(connection, values){
      }
   });
 };
-
-
-
-
-
-
-
-
 // Login Queries
 exports.getUser = function(connection, user, callback){
   connection.query("SELECT * FROM seating_lucid_agency.employee AS E WHERE E.email = ?", [user.email], function(err, rows){

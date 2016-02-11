@@ -43,11 +43,9 @@ var storage = multer.diskStorage({
 var upload = multer({ storage: storage });
 
 router.post('/upload/image', upload.single('image'), function (req, res, next) {
-  console.log("success");
+  //console.log("success");
   //console.log(req.file);
-
   var file = req.file;
-
 
   console.log(file.filename);
 
@@ -56,7 +54,6 @@ router.post('/upload/image', upload.single('image'), function (req, res, next) {
 router.post('/upload/csv', upload.single('csv'), function (req, res, next) {
   //console.log("success");
   //console.log(req.file);
-
   var file = req.file;
   var rs = fs.createReadStream(file.path);
   parser = csvParser({columns: true}, function(err, employees){
