@@ -1250,3 +1250,23 @@ exports.updateFloorplanNumberOfDesks = function(connection, floor_planID, callba
     }
   });
 };
+
+exports.reminderUpdateEmail = function(connection, callback) {
+  connection.query("SELECT E.email FROM seating_lucid_agency.employee AS E WHERE E.haveUpdated <> '1';", function(err, result) {
+    if(err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};
+
+exports.quarterlyUpdateEmail = function(connection, callback) {
+  connection.query("SELECT E.email FROM seating_lucid_agency.employee AS E;", function(err, result) {
+    if(err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};

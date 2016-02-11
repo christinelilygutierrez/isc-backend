@@ -10,6 +10,12 @@ var users = require('./routes/users');
 var api_route = require('./routes/api');
 var session = require('express-session');
 var app = express();
+var cronJob = require('cron').CronJob;
+
+/**************** Database Connection ****************/
+var env = require('./env');
+var queries = require('./database/queries');
+var dbconnect = queries.getConnection();
 
 var sess = {
   secret: 'test',
@@ -88,6 +94,77 @@ app.use(function(err, req, res, next) {
     error: {}
   });
 });
+
+
+var dailyEmailJob = new cronJob( '57 16 * * *', function(){
+  // Require
+  var postmark = require("postmark");
+
+  // Example request
+  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var email;
+  queries.reminderUpdateEmail(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("The list of employees : ", data);
+      email=data;
+    } else {
+      email=JSON.parse(JSON.stringify(data));
+
+
+      for (var i in email) {
+        
+        val = email[i];
+        console.log(val.email);
+        client.sendEmail({
+              "From": "djgraca@asu.edu",
+              "To": val.email,
+              "Subject": 'Please Update Your Preferences', 
+              "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
+          });
+      }
+
+      
+    }
+  });
+
+
+  var quarterlyEmailJob = new cronJob( '30 03 01 */3 *', function(){
+  // Require
+  var postmark = require("postmark");
+
+  // Example request
+  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var email;
+  queries.quarterlyUpdateEmail(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("The list of employees : ", data);
+      email=data;
+    } else {
+      email=JSON.parse(JSON.stringify(data));
+
+
+      for (var i in email) {
+        
+        val = email[i];
+        console.log(val.email);
+        client.sendEmail({
+              "From": "djgraca@asu.edu",
+              "To": val.email,
+              "Subject": "It's Been Awhile...", 
+              "TextBody": "Looks like you haven't updated your preferences in awhile!  If you need to update please login at DeskSeeker now!"
+          });
+      }
+
+      
+    }
+  });
+
+
+},  null, true);
 
 // Export the app module
 module.exports = app;
