@@ -13,28 +13,6 @@ exports.getConnection = function() {
   return connection;
 };
 
-//Bulk insert Queries
-
-exports.bulkInsert=function(connection, values){
-  connection.query("INSERT INTO seating_lucid_agency.bulktest VALUES ?",
-   [values], function(err){
-     if(err){
-       //console.log("Error inserting data");
-       console.log(err);
-     }
-     else{
-       console.log("Inserted data");
-     }
-  });
-};
-
-
-
-
-
-
-
-
 // Login Queries
 exports.getUser = function(connection, user, callback){
   connection.query("SELECT * FROM seating_lucid_agency.employee AS E WHERE E.email = ?", [user.email], function(err, rows){
@@ -66,10 +44,6 @@ exports.getUserFromPassword = function(connection, user, callback){
 //     }
 //   });
 // };
-
-
-
-
 
 exports.validatedToken = function(connection, email, password, callback){
   connection.query("SELECT * FROM seating_lucid_agency.employee AS E WHERE E.email = ? AND E.password = ?;", [email, password], function(err, rows){
