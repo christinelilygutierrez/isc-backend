@@ -59,10 +59,6 @@ exports.getUserFromPassword = function(connection, user, callback){
 //   });
 // };
 
-
-
-
-
 exports.validatedToken = function(connection, email, password, callback){
   connection.query("SELECT * FROM seating_lucid_agency.employee AS E WHERE E.email = ? AND E.password = ?;", [email, password], function(err, rows){
     if(err){
