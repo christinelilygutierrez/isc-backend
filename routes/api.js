@@ -26,7 +26,7 @@ var multer  = require('multer');
 // File Upload
 var storage = multer.diskStorage({
   destination: function (req, file, callback) {
-    callback(null, 'public/documents')
+    callback(null, 'public/documents');
   },
   filename: function (req, file, callback) {
     //get filename and change it to a new name using a uuid
@@ -42,7 +42,7 @@ var storage = multer.diskStorage({
 });
 var upload = multer({ storage: storage });
 
-router.post('/Upload/Image', upload.single('image'), function (req, res, next) {
+router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
   var file = req.file;
 
   console.log("success");
@@ -51,7 +51,13 @@ router.post('/Upload/Image', upload.single('image'), function (req, res, next) {
   res.status(204).end();
 });
 
-router.post('/Upload/Csv', upload.single('csv'), function (req, res, next) {
+function employeePropertiesToArray(employee){
+  return Object.keys(employee).map(function(k) {
+     return employee[k];
+   }
+ );
+}
+router.post('/Upload/Csv', upload.single('file'), function (req, res, next) {
   //console.log("success");
   //console.log(req.file);
   var file = req.file;
@@ -62,7 +68,7 @@ router.post('/Upload/Csv', upload.single('csv'), function (req, res, next) {
       //gets the employee
       employee= JSON.parse(JSON.stringify(employees[i]));
       //converts json to array
-      var arr = Object.keys(employee).map(function(k) { return employee[k]});
+      var arr = employeePropertiesToArray(employee);
       values.push(arr);
     }
     queries.bulkInsert(dbconnect, values);
@@ -308,13 +314,14 @@ router.post('/AddEmployee',function(req, res, next) {
                 //console.log(data);
 
                 queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
-                for (var item in data.teammates) {
+                var item=0;
+                for (item in data.teammates) {
                   queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: data.teammates[item].employeeID});
                 }
-                for (var item in data.blacklist) {
+                for (item in data.blacklist) {
                   queries.addToBlackList(dbconnect, {idemployee_blacklist: employeeID, employee_blacklist_teammate_id: data.blacklist[item].employeeID});
                 }
-                for (var item in data.whitelist) {
+                for (item in data.whitelist) {
                   queries.addToWhiteList(dbconnect, {idemployee_whitelist: employeeID, employee_whitelist_teammate_id: data.whitelist[item].employeeID});
                 }
               }
@@ -329,7 +336,7 @@ router.post('/AddEmployee',function(req, res, next) {
 
 router.post('/AddEmployees',function(req, res, next) {
   var values = JSON.parse(JSON.stringify(req.body));
-  var values = values.employees;
+  values = values.employees;
   for (var data in values) {
     var salt = bcrypt.genSaltSync(10);
     var hash = bcrypt.hashSync(values[data].password, salt);
@@ -875,7 +882,7 @@ router.get('/EmployeeBlackListConfidential/:id',function(req, res, next) {
       res.json(data);
     }
   });
-})
+});
 
 router.get('/EmployeeDesk/:id',function(req, res, next) {
   queries.getDeskOfEmployee(dbconnect, req.params.id, function(err, data){

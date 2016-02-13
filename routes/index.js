@@ -30,8 +30,12 @@ function requireRole(role) {
     } else {
       res.send(403);
     }
-  }
-};
+  };
+}
+
+router.get('/upload', function(req, res, next ){
+  res.sendFile(path.join(__dirname+'./../views/upload.html'));
+});
 
 // Login
 router.get('/login',function(req, res, next){

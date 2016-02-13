@@ -745,7 +745,7 @@ exports.getAllBlacklistEmployeesForOneEmployeeConfidential = function(connection
       callback(null, (result));
     }
   });
-}
+};
 
 exports.getAllCompanies = function(connection, callback) {
   connection.query('SELECT * FROM seating_lucid_agency.company;', function(err, result) {
@@ -854,7 +854,7 @@ exports.getAllDesksofClusters = function(connection, callback) {
     } else {
       callback(null, (result));
     }
-  })
+  });
 };
 
 exports.getAllDesksForOneCluster = function(connection, clusterID, callback) {
@@ -1156,7 +1156,7 @@ exports.getTempRangeOfOneCluster = function(connection, clusterID, callback) {
     } else {
       callback(null, (result));
     }
-  })
+  });
 };
 
 exports.getAllTempRangesOfEmployees = function(connection, callback) {

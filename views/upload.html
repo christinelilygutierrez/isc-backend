@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload Image</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/danialfarid-angular-file-upload/11.2.3/ng-file-upload-all.js"></script>
+</head>
+<body ng-app="iscApp" ng-controller="UploadCtrl">
+  <form name="form">
+    <input type="file" class="button" ngf-select ng-model="file" name="file" ngf-pattern="'image/*'"
+      ngf-accept="'image/*'" ngf-max-size="3MB"/><br />
+    <button type="submit" ng-click="submit()">submit</button>
+  </form>
+  <script src="/javascripts/FormController.js"></script>
+</body>
+</html>
