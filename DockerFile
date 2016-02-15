@@ -1,0 +1,48 @@
+FROM ubuntu:trusty
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install software-properties-common
+RUN apt-get update
+RUN add-apt-repository -y ppa:nginx/stable
+RUN apt-get update
+RUN apt-get install -y sqlite3
+RUN  apt-get install -y g++ curl libssl-dev apache2-utils build-essential nginx
+RUN curl -sL https://deb.nodesource.com/setup_5.x |bash -
+RUN apt-get install -y nodejs
+RUN npm install pm2 -g
+RUN apt-get install -y -q --no-install-recommends \
+    apt-transport-https \
+    build-essential \
+    ca-certificates \
+    curl \
+    g++ \
+    gcc \
+    git \
+    make \
+    nginx \
+    sudo \
+    wget && apt-get -y autoclean
+RUN groupadd -r mysql && useradd -r -g mysql mysql
+
+RUN apt-get update && apt-get install -y perl pwgen --no-install-recommends
+    # gpg: key 5072E1F5: public key "MySQL Release Engineering <mysql-build@oss.oracle.com>" imported
+RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys A4A9406876FCBD3C456770C88C718D3B5072E1F5
+ENV MYSQL_MAJOR 5.7
+RUN echo "deb http://repo.mysql.com/apt/ubuntu/ trusty mysql-${MYSQL_MAJOR}" > /etc/apt/sources.list.d/mysql.list
+RUN DEBIAN_FRONTEND=noninteractive apt-get -q -y install mysql-server
+
+EXPOSE 3306
+    # Create app directory
+RUN mkdir -p  /var/www/isc.com
+WORKDIR  /var/www/isc.com
+
+# Install app dependencies
+COPY package.json /var/www/isc.com/
+RUN npm install
+
+# Bundle app source
+COPY .  /var/www/isc.com
+RUN echo "daemon off;" >> /etc/nginx/nginx.conf
+RUN rm /etc/nginx/sites-enabled/default
+RUN ln -s  /var/www/isc.com/isc.com /etc/nginx/sites-enabled/
+EXPOSE 80
+# CMD service nginx start && npm start
+CMD pm2 start  /var/www/isc.com/bin/www && service nginx start

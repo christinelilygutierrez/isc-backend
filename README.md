@@ -1,6 +1,8 @@
 ﻿# isc-backend
 Backend of the Lucid Agency Ideal Seating Chart application for the database and ideal seating chart algorithm. It uses the express-generator to create the app.
 
+
+
 # Organization
 .
 ├── app.js
@@ -41,7 +43,8 @@ Backend of the Lucid Agency Ideal Seating Chart application for the database and
 3.) Using the terminal, go to isc-backend directory.
  3.1) cd isc-backend
 4.) Install dependencies
- 4.1) npm install
+4.1) npm install
+4.2)npm config set python python2.7
 
 # How to Run
 This prototype of the backend was tested using a local instance of MySQL on my machine. In order for yours to run correctly, make the following changes:
@@ -54,7 +57,7 @@ Now your database should be configured properly. In order to run the app, do the
  4.1) npm start
 5.) View the pages in a web broswer.
  5.1) http://localhost:3001
- 
+
 # Bin
 This folder contains www the sets up the port for the server as 3001 and makes app.js the entry point of the application.
 
@@ -78,3 +81,32 @@ This is a temporary folder where I keep working code so that my changes can be r
 
 # Other Notes
 This backend uses routes and views for testing the connection to the database. In reality, they are not needed for the project since we have isc-management. The main goal is to use isc-management to make API calls to this project. I do not know how to do that so I am hoping Jeff can take a look and see if it can be done. If this project is unusable, feel free to scrap it and make a working model. This is my first attempt at using any type of framework and I wanted to see if I could help in some way.
+
+
+using docker
+
+fo the root of isc-server and do the following
+
+docker build -t webapp .
+
+docker stop $(docker ps -a -q)
+
+docker rm $(docker ps -a -q)
+
+docker run -e MYSQL_ROOT_PASSWORD=admin --name isc-mysql -d -p=3306:3306 mysql
+
+docker run -it -p=80:80 --link isc-mysql:mysql --name isc-server -d webapp
+
+alias dps="docker ps -q | xargs docker inspect --format '{{ .Id }} - {{ .Name }} - {{ .NetworkSettings.IPAddress }}'"
+use the following ip to connect to docker mysql
+192.168.99.100:3306
+
+run the script database.sql in mysql workbench to create database
+
+docker ps
+
+docker exec -i -t isc-server bash
+
+go to ip 192.168.99.100
+
+to view the site 
