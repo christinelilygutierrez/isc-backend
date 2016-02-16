@@ -1,38 +1,6 @@
 ﻿# isc-backend
 Backend of the Lucid Agency Ideal Seating Chart application for the database and ideal seating chart algorithm. It uses the express-generator to create the app.
 
-# Organization
-.
-├── app.js
-├── bin
-│   └── www
-├── database
-│   ├── queries.js
-│   └── render_api.js
-├── env.js
-├── package.json
-├── public
-│   ├── images
-│   ├── javascripts
-│   │   ├── all.js
-│   └── stylesheets
-│       └── style.css
-├── node_modules
-├── README.md
-├── routes
-│   └── index.js
-├── views
-│   ├── add_employee.jade
-│   ├── clusters.jade
-│   ├── desks.jade
-│   ├── edit_employee.jade
-│   ├── employees.jade
-│   ├── error.jade
-│   ├── index.jade
-│   └── layout.jade
-└──  working code samples
-   └── app.js
-
 # How to Configure
 1. Install nodejS v5.2.0 from [https://nodejs.org/en/](https://nodejs.org/en/)
 2. Install express generator using the following command 
@@ -56,12 +24,9 @@ Backend of the Lucid Agency Ideal Seating Chart application for the database and
 
 # How to Run
 This prototype of the backend was tested using a local instance of MySQL on my machine. In order for yours to run correctly, make the following changes in `env.js`.
+
 1. Edit the *hostname*, *username*, *password*, *port number*, and *database name* to suit your mysql instance 
-2. Now your database should be configured properly. In order to run the app, do the following. In the terminal, go the isc-backend directory.
-   ```
-   cd isc-backend
-   npm start
-   ```
+2. Now your database should be configured properly. In order to run the app, do the following. In the terminal, go the isc-backend directory.   ```cd isc-backend  && npm start ```
 3. View the pages in a web broswer on `http://localhost:3001`
 
 # Bin
