@@ -83,30 +83,44 @@ This is a temporary folder where I keep working code so that my changes can be r
 This backend uses routes and views for testing the connection to the database. In reality, they are not needed for the project since we have isc-management. The main goal is to use isc-management to make API calls to this project. I do not know how to do that so I am hoping Jeff can take a look and see if it can be done. If this project is unusable, feel free to scrap it and make a working model. This is my first attempt at using any type of framework and I wanted to see if I could help in some way.
 
 
-using docker
+# Using Docker
+This assumes that you have installed [Docker](https://www.docker.com/) 
+* Go to the root of isc-server and execute the following commands to build the docker image
 
-fo the root of isc-server and do the following
-
+```docker
 docker build -t webapp .
+```
 
+* Then stop and remove all the containers using the following two commands 
+
+```docker
 docker stop $(docker ps -a -q)
 
 docker rm $(docker ps -a -q)
+```
 
+* Run the following command to start mysql  instance 
+
+```docker
 docker run -e MYSQL_ROOT_PASSWORD=admin --name isc-mysql -d -p=3306:3306 mysql
+```
 
+* After finishing then start our app using the following command 
+
+```docker 
 docker run -it -p=80:80 --link isc-mysql:mysql --name isc-server -d webapp
+```
 
-alias dps="docker ps -q | xargs docker inspect --format '{{ .Id }} - {{ .Name }} - {{ .NetworkSettings.IPAddress }}'"
-use the following ip to connect to docker mysql
-192.168.99.100:3306
-
-run the script database.sql in mysql workbench to create database
-
+* Use the following ip address  `192.168.99.100:3306` to connect to mysql 
+* Connect to mysql using  mysql workbench and run the script `database.sql` to create database
+* To check the running containers execute
+```docker
 docker ps
-
+```
+* To connect to the container execute 
+```docker 
 docker exec -i -t isc-server bash
+```
+* To view the site go to ip `192.168.99.100` 
 
-go to ip 192.168.99.100
 
-to view the site 
