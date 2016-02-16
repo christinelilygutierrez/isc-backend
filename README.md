@@ -1,4 +1,4 @@
-﻿# isc-backend
+# ISC Backend Server
 Backend of the Lucid Agency Ideal Seating Chart application for the database and ideal seating chart algorithm. It uses the express-generator to create the app.
 
 # How to Configure
