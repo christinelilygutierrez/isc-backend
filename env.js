@@ -6,10 +6,10 @@
 // The environment variable for the database
 const env = {
   database: {
-    host: '192.168.99.100',
+    host: 'localhost',
     name: 'seating_lucid_agency',
     user: 'root',
-    pass: 'admin',
+    pass: '',
     port: 3306
   },
   logErrors: true,

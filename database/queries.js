@@ -14,7 +14,6 @@ exports.getConnection = function() {
 };
 
 //Bulk insert Queries
-
 exports.bulkInsert=function(connection, values){
   connection.query("INSERT INTO seating_lucid_agency.bulktest VALUES ?",
    [values], function(err){
@@ -27,6 +26,7 @@ exports.bulkInsert=function(connection, values){
      }
   });
 };
+
 // Login Queries
 exports.getUser = function(connection, user, callback){
   connection.query("SELECT * FROM seating_lucid_agency.employee AS E WHERE E.email = ?", [user.email], function(err, rows){
@@ -176,12 +176,16 @@ exports.addFloorPlanToOffice = function(connection, values) {
   });
 };
 
-exports.addOffice = function(connection, values) {
+exports.addOffice = function(connection, values, callback) {
   connection.query("INSERT INTO seating_lucid_agency.office SET ?;", values, function(err, result) {
     if (err) {
       console.log(err);
+      callback(null);
     } else if (env.logQueries) {
       console.log("Office %d was added to database", values[0]);
+      callback(null);
+    } else {
+      callback(null);
     }
   });
 };
@@ -457,6 +461,16 @@ exports.deleteOfficeFromCompany = function(connection, officeID, companyID) {
 };
 
 exports.deleteRange = function(connection, id) {
+  connection.query("DELETE FROM seating_lucid_agency.has_a_emp_temp WHERE rangeID = ?;", id, function(err, result) {
+    if (err) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.has_a_cluster_temp WHERE IDrange = ?;", id, function(err, result) {
+    if (err) {
+      console.log(err);
+    }
+  });
   connection.query("DELETE FROM seating_lucid_agency.range WHERE rangeID = ?;", id, function(err, result) {
     if (err) {
       console.log(err);
@@ -768,7 +782,7 @@ exports.getOneCompany = function(connection, companyID, callback) {
 };
 
 exports.getCompaniesForAllOffices = function(connection, callback) {
-  connection.query('SELECT C.companyName, O.officeID, O.officeName, O.officePhoneNumber, O.officeEmail, O.officeStreetAddress, O.officeCity, O.officeState, O.officeZipcode FROM seating_lucid_agency.office AS O, seating_lucid_agency.owned_by OW, seating_lucid_agency.company AS C WHERE O.officeID = OW.IDforOffice AND OW.IDforCompany = C.companyID;', function(err, result) {
+  connection.query('SELECT C.companyID, C.companyName, O.officeID, O.officeName, O.officePhoneNumber, O.officeEmail, O.officeStreetAddress, O.officeCity, O.officeState, O.officeZipcode FROM seating_lucid_agency.office AS O, seating_lucid_agency.owned_by OW, seating_lucid_agency.company AS C WHERE O.officeID = OW.IDforOffice AND OW.IDforCompany = C.companyID;', function(err, result) {
     if(err) {
       callback(err, null);
     } else {
@@ -1049,8 +1063,18 @@ exports.getAllOffices = function(connection, callback) {
   });
 };
 
-exports.getOneOffice = function(connection, employeeID, callback) {
-  connection.query('SELECT * FROM seating_lucid_agency.office WHERE officeID = ?;', employeeID, function(err, result) {
+exports.getOneOffice = function(connection, officeID, callback) {
+  connection.query('SELECT * FROM seating_lucid_agency.office WHERE officeID = ?;', officeID, function(err, result) {
+    if(err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};
+
+exports.getMostRecentOffice = function(connection, callback) {
+  connection.query('SELECT * FROM seating_lucid_agency.office WHERE seating_lucid_agency.office.officeID in (SELECT MAX(seating_lucid_agency.office.officeID) FROM seating_lucid_agency.office);', function(err, result) {
     if(err) {
       callback(err, null);
     } else {
@@ -1060,7 +1084,7 @@ exports.getOneOffice = function(connection, employeeID, callback) {
 };
 
 exports.getAllOfficesForCompany = function(connection, callback) {
-  connection.query('SELECT DISTINCT O.officeID, O.officeName, O.officePhoneNumber, O.officeEmail, O.officeStreetAddress, O.officeCity, O.officeStreetAddress, O.officeZipcode FROM seating_lucid_agency.office AS O, seating_lucid_agency.owned_by OW, seating_lucid_agency.company AS C WHERE O.officeID = OW.IDforOffice AND OW.IDforCompany = C.companyID;', function(err, result) {
+  connection.query('SELECT DISTINCT O.officeID, O.officeName, O.officePhoneNumber, O.officeEmail, O.officeStreetAddress, O.officeCity, O.officeStreetAddress, O.officeState, O.officeZipcode FROM seating_lucid_agency.office AS O, seating_lucid_agency.owned_by OW, seating_lucid_agency.company AS C WHERE O.officeID = OW.IDforOffice AND OW.IDforCompany = C.companyID;', function(err, result) {
     if(err) {
       callback(err, null);
     } else {
@@ -1070,7 +1094,7 @@ exports.getAllOfficesForCompany = function(connection, callback) {
 };
 
 exports.getAllOfficesForOneCompany = function(connection, companyID, callback) {
-  connection.query('SELECT DISTINCT O.officeID, O.officeName, O.officePhoneNumber, O.officeEmail, O.officeStreetAddress, O.officeCity, O.officeStreetAddress, O.officeZipcode FROM seating_lucid_agency.office AS O, seating_lucid_agency.owned_by OW, seating_lucid_agency.company AS C WHERE C.companyID = ? AND O.officeID = OW.IDforOffice AND OW.IDforCompany = C.companyID;', companyID, function(err, result) {
+  connection.query('SELECT DISTINCT O.officeID, O.officeName, O.officePhoneNumber, O.officeEmail, O.officeStreetAddress, O.officeCity, O.officeStreetAddress, O.officeState, O.officeZipcode FROM seating_lucid_agency.office AS O, seating_lucid_agency.owned_by OW, seating_lucid_agency.company AS C WHERE C.companyID = ? AND O.officeID = OW.IDforOffice AND OW.IDforCompany = C.companyID;', companyID, function(err, result) {
     if(err) {
       callback(err, null);
     } else {

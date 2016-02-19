@@ -22,6 +22,7 @@ dbconnect.connect(function(err){
   }
 });
 
+/**************** File Upload ****************/
 var multer  = require('multer');
 // File Upload
 var storage = multer.diskStorage({
@@ -44,10 +45,9 @@ var upload = multer({ storage: storage });
 
 router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
   var file = req.file;
-
   console.log("success");
   //console.log(req.file);
-  console.log(file.filename);
+  console.log(file);
   res.status(204).end();
 });
 
@@ -56,7 +56,8 @@ function employeePropertiesToArray(employee){
      return employee[k];
    }
  );
-}
+};
+
 router.post('/Upload/Csv', upload.single('file'), function (req, res, next) {
   //console.log("success");
   //console.log(req.file);
@@ -71,11 +72,10 @@ router.post('/Upload/Csv', upload.single('file'), function (req, res, next) {
       var arr = employeePropertiesToArray(employee);
       values.push(arr);
     }
-    queries.bulkInsert(dbconnect, values);
-});
-rs.pipe(parser);
-//console.log(file.filename);
-res.status(204).end();
+  });
+  rs.pipe(parser);
+  //console.log(file.filename);
+  res.status(204).end();
 });
 
 /**************** Login Implementationn ****************/
@@ -372,9 +372,74 @@ router.post('/AddOffice',function(req, res, next) {
       officeState: data.officeState,
       officeZipcode: data.officeZipcode
     };
-    queries.addOffice(dbconnect, office);
+    var companyID = data.companyID;
+    var officeID = 1;
+    var adder;
+
+    queries.addOffice(dbconnect, office, function(err) {
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else {
+        queries.getMostRecentOffice(dbconnect, function(err, results) {
+          if (err && env.logErrors) {
+            console.log("ERROR : ", err);
+          } else {
+            officeID = results[0].officeID;
+            adder = {
+              IDforOffice : officeID,
+              IDforCompany : companyID
+            };
+            queries.addOfficeToCompany(dbconnect, adder);
+          }
+        });
+      }
+    });
   });
   res.send("Office added.");
+});
+
+router.post('/AddOfficeEmployee',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  bcrypt.genSalt(10, function(err, salt) {
+    bcrypt.hash(data.password, salt, function(err, hash) {
+      req.getConnection(function(err, connection) {
+        var employee = {
+          firstName : data.firstName,
+          lastName : data.lastName,
+          email : data.email,
+          password : hash,
+          department : data.department,
+          title : data.title,
+          restroomUsage : data.restroomUsage,
+          noisePreference : data.noisePreference,
+          outOfDesk : data.outOfDesk,
+          pictureAddress : data.pictureAddress,
+          permissionLevel : data.permissionLevel
+        };
+        var officeID = data.officeID;
+        queries.addEmployee(dbconnect, employee, function (err) {
+          if (err) {
+            return res.json({error: err});
+          } else {
+            queries.getUser(dbconnect, {email: data.email}, function(err, results) {
+              if (err && env.logErrors) {
+                console.log("ERROR : ", err);
+              } else {
+                var employeeID = results[0].employeeID;
+                var adder = {
+                  employeeKey: employeeID,
+                  officeKey : officeID
+                };
+                queries.addEmployeeToOffice(dbconnect, adder);
+              }
+            });
+          }
+        });
+      });
+    });
+  });
+  res.send("Employee added to Office.");
 });
 
 router.post('/AddTeammatesToEmployee',function(req, res, next) {
@@ -394,6 +459,19 @@ router.post('/AddTeammatesToEmployee',function(req, res, next) {
   res.send("Teammates added to an employee.");
 });
 
+router.post('/AddTemperatureRange',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var temperatureRange = {
+      lower : data.lower,
+      upper : data.upper
+    };
+    queries.addRange(dbconnect, temperatureRange);
+  });
+  res.send("Temperature range added.");
+});
+
 router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
 
@@ -406,7 +484,6 @@ router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
   });
   res.send("Temperature range added to an employee.");
 });
-
 
 //Routing for the Delete queries
 router.get('/DeleteCompany/:id', function(req, res) {
@@ -427,15 +504,21 @@ router.get('/DeleteOffice/:id', function(req, res) {
   res.send("Office deleted.");
 });
 
-router.get('/deleteEntireBlackListForEmployee/:id', function(req, res) {
+router.get('/DeleteEntireBlackListForEmployee/:id', function(req, res) {
   var ID = req.params.id;
   queries.deleteEntireBlackListForEmploye(dbconnect, ID);
   res.send("Blacklist for employee %d deleted.", ID);
 });
 
-router.get('/deleteEntireWhiteListForEmployee/:id', function(req, res) {
+router.get('/DeleteEntireWhiteListForEmployee/:id', function(req, res) {
   var ID = req.params.id;
   queries.deleteEntireWhiteListForEmploye(dbconnect, ID);
+  res.send("Whitelist for employee %d deleted.", ID);
+});
+
+router.get('/DeleteTemperatureRange/:id', function(req, res) {
+  var ID = req.params.id;
+  queries.deleteRange(dbconnect, ID);
   res.send("Whitelist for employee %d deleted.", ID);
 });
 
@@ -516,7 +599,21 @@ router.post('/EditOffice/:id',function(req, res, next) {
     };
     queries.editOffice(dbconnect, office, ID);
   });
-  res.send("Ofice edited");
+  res.send("Office edited");
+});
+
+router.post('/EditTemperatureRange/:id',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+
+  req.getConnection(function(err, connection) {
+    var temperatureRange = {
+      lower : data.lower,
+      upper : data.upper
+    };
+    queries.editRange(dbconnect, temperatureRange, ID);
+  });
+  res.send("Temperature Range edited");
 });
 
 // Routing for the Get queries
@@ -760,6 +857,19 @@ router.get('/Company/:id',function(req, res, next) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Company #" + req.params.id + ": " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/CompanyOffices/:id',function(req, res, next) {
+  queries.getAllOfficesForOneCompany(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Company #" + req.params.id + " offices: " , data);
       res.json(data);
     } else {
       res.json(data);
