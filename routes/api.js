@@ -45,9 +45,14 @@ var upload = multer({ storage: storage });
 
 router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
   var file = req.file;
-  console.log("success");
-  //console.log(req.file);
-  console.log(file);
+  var data = JSON.parse(JSON.stringify(req.body));
+  var adder = {
+    pictureAddress: file.filename,
+    employeeID: data.employeeID
+  };
+
+  // Update Employee Profile Image
+  queries.updateEmployeeProfileImage(dbconnect, adder);
   res.status(204).end();
 });
 
@@ -58,9 +63,7 @@ function employeePropertiesToArray(employee){
  );
 };
 
-router.post('/Upload/Csv', upload.single('file'), function (req, res, next) {
-  //console.log("success");
-  //console.log(req.file);
+router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
   var file = req.file;
   var rs = fs.createReadStream(file.path);
   parser = csvParser({columns: true}, function(err, employees){
