@@ -235,6 +235,47 @@ router.get('/Authenticate', function(req, res){
   res.json(apiError.errors("403","denied"));
 });
 
+
+/**************** Initialization Checks ****************/
+router.get('/ExistsCompany',function(req, res, next) {
+  queries.existsCompany(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there a company? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsOffice',function(req, res, next) {
+  queries.existsOffice(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there an office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsTemperatureRange',function(req, res, next) {
+  queries.existsTemperatureRange(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there a temperature range? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 /**************** RESTful API ****************/
 // GET /api page
 router.get('/', function(req, res, next) {
@@ -360,6 +401,51 @@ router.post('/AddEmployees',function(req, res, next) {
     });
   }
   return res.send("Employees added.");
+});
+
+router.post('/AddInitialOfficeWithEmployee',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var office = {
+    officeName: data.officeName,
+    officePhoneNumber: data.officePhoneNumber,
+    officeEmail: data.officeEmail,
+    officeStreetAddress: data.officeStreetAddress,
+    officeCity: data.officeCity,
+    officeState: data.officeState,
+    officeZipcode: data.officeZipcode
+  };
+  var employeeID = data.employeeID;
+  var officeID = 0;
+  var companyID = data.companyID;
+  var adder1;
+  var adder2;
+
+  req.getConnection(function(err, connection) {
+    queries.addOffice(dbconnect, office, function(err) {
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else {
+        queries.getMostRecentOffice(dbconnect, function(err, results) {
+          if (err && env.logErrors) {
+            console.log("ERROR : ", err);
+          } else {
+            officeID = results[0].officeID;
+            adder1 = {
+              employeeKey : employeeID,
+              officeKey : officeID
+            };
+            adder2 = {
+              IDforOffice : officeID,
+              IDforCompany : companyID
+            };
+            queries.addEmployeeToOffice(dbconnect, adder1);
+            queries.addOfficeToCompany(dbconnect, adder2);
+          }
+        });
+      }
+    });
+  });
+  res.send("Employee added to office");
 });
 
 router.post('/AddOffice',function(req, res, next) {
@@ -1042,6 +1128,19 @@ router.get('/EmployeeTeammatesConfidential/:id',function(req, res, next) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Employee #" + req.params.id + "'s teammates:" , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/EmployeesNotInTeammates/:employeeID/:officeID',function(req, res, next) {
+  queries.getAllEmployeesNotInTeammatesForOffice(dbconnect, req.params.employeeID, req.params.officeID, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("All employees not in teammates of #" + req.params.emloyeeID + ": ", data);
       res.json(data);
     } else {
       res.json(data);

@@ -56,6 +56,36 @@ exports.validatedToken = function(connection, email, password, callback){
   });
 };
 
+// Initialization Queries
+exports.existsCompany = function(connection, callback) {
+  connection.query("SELECT EXISTS (SELECT companyID FROM seating_lucid_agency.company LIMIT 1) AS result;", function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, result);
+    }
+  });
+};
+
+exports.existsOffice = function(connection, callback) {
+  connection.query("SELECT EXISTS (SELECT officeID FROM seating_lucid_agency.office LIMIT 1) AS result;", function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, result);
+    }
+  });
+};
+
+exports.existsTemperatureRange = function(connection, callback) {
+  connection.query("SELECT EXISTS (SELECT rangeID FROM seating_lucid_agency.range LIMIT 1) AS result;", function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, result);
+    }
+  });
+};
 
 // Non-Login Queries
 exports.addCompany = function(connection, values) {
@@ -338,6 +368,21 @@ exports.deleteEmployee = function(connection, id) {
     }
   });
   connection.query("DELETE FROM seating_lucid_agency.has_a_emp_temp WHERE employeeID = ?;", id, function(err, result) {
+    if (err) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_teammates WHERE idemployee_teammates = ?;", id, function(err, result) {
+    if (err) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_blacklist WHERE idemployee_blacklist = ?;", id, function(err, result) {
+    if (err) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_whitelist WHERE idemployee_whitelist = ?;", id, function(err, result) {
     if (err) {
       console.log(err);
     }
@@ -1121,6 +1166,16 @@ exports.getAllTeammatesForOneEmployee = function(connection, employeeID, callbac
 
 exports.getAllTeammatesForOneEmployeeConfidential = function(connection, employeeID, callback) {
   connection.query('SELECT E.employeeID, E.firstName,  N.employeeID, N.firstName, N.lastName, N.email, N.password, N.department, N.title, N.restroomUsage, N.noisePreference, N.outOfDesk, N.pictureAddress, N.permissionLevel FROM  employee as E, employee_teammates as T, employee as N WHERE E.employeeID = ? AND E.employeeID = T.idemployee_teammates AND E.employeeID != N.employeeID AND T.employee_teammate_id in (SELECT employeeID FROM employee) AND N.employeeID = T.employee_teammate_id;', employeeID, function(err, result) {
+    if(err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};
+
+exports.getAllEmployeesNotInTeammatesForOffice = function(connection, employeeID, officeID, callback) {
+    connection.query('SELECT DISTINCT E.employeeID, E.firstName, E.lastName, E. email, E.department, E.title, E.restroomUsage, E.outOfDesk, E.pictureAddress FROM seating_lucid_agency.employee AS E, seating_lucid_agency.works_at as WO, seating_lucid_agency.office as O WHERE E.employeeID = WO.employeeKey AND WO.officeKey = O.officeID AND O.officeID = ? AND E.employeeID  <>  ? AND NOT (E.employeeID in (SELECT T.employee_teammate_id FROM seating_lucid_agency.employee_teammates AS T WHERE T.idemployee_teammates = ?));', [officeID, employeeID, employeeID], function(err, result) {
     if(err) {
       callback(err, null);
     } else {
