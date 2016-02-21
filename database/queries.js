@@ -1,5 +1,6 @@
 var env = require('../env');
 var uuid = require('node-uuid');
+var initialize_database_query = require('./initialize_database');
 
 // Function that returns an object that represents a connection
 exports.getConnection = function() {
@@ -8,9 +9,41 @@ exports.getConnection = function() {
     host: env.database.host,
     user: env.database.user,
     password: env.database.pass,
-    database: env.database.name
+    database: env.database.name,
+    multipleStatements: env.database.multipleStatements
   });
   return connection;
+};
+
+exports.getInitialConnection = function() {
+  var mysql = require('mysql');
+  var connection = mysql.createConnection({
+    host: env.database.host,
+    user: env.database.user,
+    password: env.database.pass,
+    multipleStatements: env.database.multipleStatements
+  });
+  return connection;
+};
+
+// Create database if it does not exist
+exports.existsDatabase = function(connection, callback){
+  connection.query("SELECT EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'seating_lucid_agency') AS result;", function(err, rows){
+    if(err) {
+       callback(err, null);
+     } else {
+       callback(null, (rows));
+     }
+  });
+};
+
+// Create database if it does not exist
+exports.createDatabase = function(connection){
+  connection.query(initialize_database_query.initializeQuery, function(err, rows){
+    if (err) {
+      console.log(err);
+    }
+  });
 };
 
 // Login Queries
@@ -69,6 +102,16 @@ exports.existsCompany = function(connection, callback) {
 
 exports.existsOffice = function(connection, callback) {
   connection.query("SELECT EXISTS (SELECT officeID FROM seating_lucid_agency.office LIMIT 1) AS result;", function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, result);
+    }
+  });
+};
+
+exports.existsSuperadminWithOffice = function(connection, callback) {
+  connection.query("SELECT EXISTS (SELECT O.officeID FROM seating_lucid_agency.employee AS E, seating_lucid_agency.office AS O, seating_lucid_agency.works_at as W WHERE E.permissionLevel = 'superadmin' AND E.employeeID = W.employeeKey AND W.officeKey = O.officeID) AS result;", function(err, result) {
     if (err) {
       callback(err, null);
     } else {

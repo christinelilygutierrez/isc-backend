@@ -10,7 +10,8 @@ const env = {
     name: 'seating_lucid_agency',
     user: 'root',
     pass: 'Grand.garramo88',
-    port: 3306
+    port: 3306,
+    multipleStatements: true
   },
   logErrors: true,
   logQueries: false,
