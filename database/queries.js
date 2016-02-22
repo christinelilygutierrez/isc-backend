@@ -1249,7 +1249,7 @@ exports.updateFloorplanNumberOfDesks = function(connection, floor_planID, callba
   });
 };
 
-<<<<<<< HEAD
+
 exports.updateEmployeeProfileImage = function(connection, data) {
   connection.query('UPDATE seating_lucid_agency.employee SET pictureAddress = ? WHERE employeeID = ?', [data.pictureAddress, data.employeeID], function(err, result) {
     if (err) {
@@ -1259,7 +1259,7 @@ exports.updateEmployeeProfileImage = function(connection, data) {
     }
   });
 };
-=======
+
 
 /****Email Queries***/
 exports.reminderUpdateEmail = function(connection, callback) {
@@ -1301,4 +1301,3 @@ exports.tenDayOrOlderAccounts = function(connection, callback) {
     }
   });
 };
->>>>>>> refs/remotes/origin/notifications
