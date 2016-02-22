@@ -1192,4 +1192,71 @@ router.get('/User/:id',function(req, res, next) {
   });
 });
 
+/******E-Mail API*****/
+router.post('/SendEmail',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  //Admin Reasons: Password update, password reset request, employee preferences changed (daily)
+  //User Reasons: When added to update profile, then 5 days later remind them, after that every 10 days, then suggest update every 92 days
+  
+  // Require
+  var postmark = require("postmark");
+
+  // Example request
+  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+
+  if(data.reason ==='passwordUpdate'){
+    client.sendEmail({
+        "From": "djgraca@asu.edu",
+        "To": data.to,
+        "Subject": 'A Password has been Updated', 
+        "TextBody": "An employee/admin has had their password updated!"
+    });
+  }
+  else if(data.reason ==='passwordReset'){
+    client.sendEmail({
+        "From": "djgraca@asu.edu",
+        "To": data.to,
+        "Subject": 'Password Reset Requested', 
+        "TextBody": "A password rest has been requested from user: 'ADD ME LATER'"
+    });
+  }
+  else if(data.reason ==='employeeUpdate'){
+    client.sendEmail({
+        "From": "djgraca@asu.edu",
+        "To": data.to,
+        "Subject": 'Seating Chart Update Recommended', 
+        "TextBody": "Employee(s) have updated their preferences and the Seating Chart may be recommended."
+    });
+
+  }
+  else if(data.reason ==='employeeAdd'){
+    client.sendEmail({
+        "From": "djgraca@asu.edu",
+        "To": data.to,
+        "Subject": 'Welcome to DeskSeeker!', 
+        "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!"
+    });
+  }
+  else if(data.reason ==='employeeRemind'){
+    client.sendEmail({
+        "From": "djgraca@asu.edu",
+        "To": data.to,
+        "Subject": 'Reminder: Update your Profile', 
+        "TextBody": "It looks like you haven't updated your profile yet.  Please do at DeskSeeker now to get the perfect desk for you!"
+    });
+  }
+  else if(data.reason ==='employeeQuarter'){
+    client.sendEmail({
+        "From": "djgraca@asu.edu",
+        "To": data.to,
+        "Subject": "It's been awhile...", 
+        "TextBody": "It's been awhile since you last updated your preferences.  If you have any updates, please login to your profile as DeskSeeker and edit your preferences, otherwise we're glad we found your perfect desk!"
+    });
+  }
+res.send("Email sent");
+});
+
+
+
+
 module.exports = router;
