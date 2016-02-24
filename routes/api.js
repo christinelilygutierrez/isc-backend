@@ -1192,9 +1192,107 @@ router.get('/User/:id',function(req, res, next) {
   });
 });
 
+router.post('/UpdatePassword',function(req, res) {
+  var passwords = JSON.parse(JSON.stringify(req.body));
+
+  queries.getOneEmployeeConfidential(dbconnect, passwords.employeeID, function(err, data){
+    var query = JSON.parse(JSON.stringify(data));
+    if (err) {
+      return res.json({error: err});
+    } 
+    else {
+      bcrypt.genSalt(10, function(err, salt) {
+        if(bcrypt.compareSync(passwords.oldPassword, query[0].password)){
+          if(passwords.password===passwords.password2){
+            bcrypt.genSalt(10, function(err, salt) {
+              bcrypt.hash(passwords.password, salt, function(err, hash) {
+                var employee = {
+                  firstName : query[0].firstName,
+                  lastName : query[0].lastName,
+                  email : query[0].email,
+                  password : hash,
+                  department : query[0].department,
+                  title : query[0].title,
+                  restroomUsage : query[0].restroomUsage,
+                  noisePreference : query[0].noisePreference,
+                  outOfDesk : query[0].outOfDesk,
+                  pictureAddress : query[0].pictureAddress,
+                  permissionLevel : query[0].permissionLevel
+                };
+                queries.editEmployee(dbconnect, employee, passwords.employeeID);
+                res.send("Password Updated.");
+              });
+            });
+          }
+          else{
+            res.json({ success: false, message: 'New passwords do not match.' });
+          }
+        }
+        else{
+          res.json({ success: false, message: 'Invalid Old Password.' });
+        }
+      });
+    }
+  });
+});
+
+router.post('/PasswordReset', function(req, res){
+
+  var user = JSON.parse(JSON.stringify(req.body));
+  var newPassword = Math.round((Math.pow(36, 8) - Math.random() * Math.pow(36, 7))).toString(36).slice(1);
+  // Require
+  var postmark = require("postmark");
+
+  
+  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+
+  queries.getUser(dbconnect, user, function(err, data){
+    console.log(data);
+    if(data.length>0){
+      //user was found, time to encrypt the password
+      var salt = bcrypt.genSaltSync(10);
+      //var hash = bcrypt.hashSync(values[data].password, salt);
+      hash = bcrypt.hashSync(newPassword, salt);
+      //update the user's password
+      queries.getOneEmployeeConfidential(dbconnect, data[0].employeeID, function(err, data){
+        var query = JSON.parse(JSON.stringify(data));
+        console.log(data);
+        var employee = {
+          firstName : query[0].firstName,
+          lastName : query[0].lastName,
+          email : query[0].email,
+          password : hash,
+          department : query[0].department,
+          title : query[0].title,
+          restroomUsage : query[0].restroomUsage,
+          noisePreference : query[0].noisePreference,
+          outOfDesk : query[0].outOfDesk,
+          pictureAddress : query[0].pictureAddress,
+          permissionLevel : query[0].permissionLevel
+        };
+
+        queries.editEmployee(dbconnect, employee, query[0].employeeID);
+      });
+      //now send the email to the user
+      client.sendEmail({
+          "From": "djgraca@asu.edu",
+          "To": user.email,
+          "Subject": 'You have requested a Password Reset', 
+          "TextBody": "Please use this temporary password to login: "+newPassword
+      });
+      res.send("Password Reset");
+    }
+    else{
+      console.log("4");
+      res.json({ success: false, message: 'No such user.' });
+    }
+  });
+});
+
+
 /******E-Mail API*****/
 router.post('/SendEmail',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
+  var emailData = JSON.parse(JSON.stringify(req.body));
   //Admin Reasons: Password update, password reset request, employee preferences changed (daily)
   //User Reasons: When added to update profile, then 5 days later remind them, after that every 10 days, then suggest update every 92 days
   
@@ -1204,55 +1302,92 @@ router.post('/SendEmail',function(req, res, next) {
   // Example request
   var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
 
-  if(data.reason ==='passwordUpdate'){
-    client.sendEmail({
-        "From": "djgraca@asu.edu",
-        "To": data.to,
-        "Subject": 'A Password has been Updated', 
-        "TextBody": "An employee/admin has had their password updated!"
+  if(emailData.reason ==='passwordUpdate'){
+
+    queries.emailSuperAdmins(dbconnect, function(err, data){
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else if (env.logQueries) {
+        console.log("The list of employees : ", data);
+        email=data;
+      } else {
+        admin=JSON.parse(JSON.stringify(data));
+
+        for (var i in admin) {
+
+          val = admin[i];
+          client.sendEmail({
+            "From": "djgraca@asu.edu",
+            "To": val.email,
+            "Subject": 'Someone has Updated their Password', 
+            "TextBody": emailData.email+" has updated their password."
+          });
+        }
+      }
     });
   }
-  else if(data.reason ==='passwordReset'){
-    client.sendEmail({
-        "From": "djgraca@asu.edu",
-        "To": data.to,
-        "Subject": 'Password Reset Requested', 
-        "TextBody": "A password rest has been requested from user: 'ADD ME LATER'"
+  else if(emailData.reason ==='passwordReset'){
+
+    queries.emailSuperAdmins(dbconnect, function(err, data){
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else if (env.logQueries) {
+        console.log("The list of employees : ", data);
+        email=data;
+      } else {
+        admin=JSON.parse(JSON.stringify(data));
+
+        for (var i in admin) {
+
+          val = admin[i];
+          client.sendEmail({
+            "From": "djgraca@asu.edu",
+            "To": val.email,
+            "Subject": 'Someone has Requested a Password Reset', 
+            "TextBody": emailData.email+" has requested a password reset and has been given a temporary password."
+          });
+        }
+      }
     });
   }
-  else if(data.reason ==='employeeUpdate'){
-    client.sendEmail({
-        "From": "djgraca@asu.edu",
-        "To": data.to,
-        "Subject": 'Seating Chart Update Recommended', 
-        "TextBody": "Employee(s) have updated their preferences and the Seating Chart may be recommended."
+  else if(emailData.reason ==='employeeUpdate'){
+    queries.emailSuperAdmins(dbconnect, function(err, data){
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else if (env.logQueries) {
+        console.log("The list of employees : ", data);
+        email=data;
+      } else {
+        admin=JSON.parse(JSON.stringify(data));
+
+        for (var i in admin) {
+
+          val = admin[i];
+          console.log(val.email);
+          client.sendEmail({
+            "From": "djgraca@asu.edu",
+            "To": val.email,
+            "Subject": 'Seating Chart Update Recommended', 
+            "TextBody": "Employee(s) have updated their preferences and the Seating Chart recommendation may have changed."
+          });
+        }
+
+        
+      }
     });
 
   }
-  else if(data.reason ==='employeeAdd'){
+  else if(emailData.reason ==='employeeAdd'){
+    console.log("got here");
+    console.log(emailData.to);
     client.sendEmail({
         "From": "djgraca@asu.edu",
-        "To": data.to,
+        "To": emailData.to,
         "Subject": 'Welcome to DeskSeeker!', 
-        "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!"
+        "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password
     });
   }
-  else if(data.reason ==='employeeRemind'){
-    client.sendEmail({
-        "From": "djgraca@asu.edu",
-        "To": data.to,
-        "Subject": 'Reminder: Update your Profile', 
-        "TextBody": "It looks like you haven't updated your profile yet.  Please do at DeskSeeker now to get the perfect desk for you!"
-    });
-  }
-  else if(data.reason ==='employeeQuarter'){
-    client.sendEmail({
-        "From": "djgraca@asu.edu",
-        "To": data.to,
-        "Subject": "It's been awhile...", 
-        "TextBody": "It's been awhile since you last updated your preferences.  If you have any updates, please login to your profile as DeskSeeker and edit your preferences, otherwise we're glad we found your perfect desk!"
-    });
-  }
+  console.log("finished");
 res.send("Email sent");
 });
 

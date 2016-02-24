@@ -1301,3 +1301,13 @@ exports.tenDayOrOlderAccounts = function(connection, callback) {
     }
   });
 };
+
+exports.emailSuperAdmins = function(connection, callback) {
+  connection.query("SELECT E.email FROM seating_lucid_agency.employee AS E WHERE E.permissionLevel ='superadmin';", function(err, result) {
+    if(err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};
