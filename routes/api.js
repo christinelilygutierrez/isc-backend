@@ -17,6 +17,7 @@ dbconnect.connect(function(err){
     console.log("Connected to MySQL");
     queries.existsDatabase(dbconnect, function (err, data) {
       if (data[0].result == 1) {
+        queries.useDatabase(dbconnect);
         console.log("Connected to seating_lucid_agency database");
       } else {
         console.log("Creating seating_lucid_agency");
@@ -369,6 +370,11 @@ router.post('/AddDesk',function(req, res, next) {
 
 router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
+  var officeID;
+
+  if ((data.officeID) != null && (typeof data.officeID !== 'undefined')) {
+    officeID = data.officeID;
+  }
 
   bcrypt.genSalt(10, function(err, salt) {
     bcrypt.hash(data.password, salt, function(err, hash) {
@@ -400,6 +406,9 @@ router.post('/AddEmployee',function(req, res, next) {
                 //console.log("Original Data");
                 //console.log(data);
 
+                if ((officeID) != null && (typeof officeID !== 'undefined')) {
+                  queries.addEmployeeToOffice(dbconnect, {employeeKey : employeeID, officeKey : officeID});
+                }
                 queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
                 var item=0;
                 for (item in data.teammates) {
@@ -423,6 +432,9 @@ router.post('/AddEmployee',function(req, res, next) {
 
 router.post('/AddEmployees',function(req, res, next) {
   var values = JSON.parse(JSON.stringify(req.body));
+  var officeID = values.officeID;
+
+  console.log(officeID);
   values = values.employees;
   for (var data in values) {
     var salt = bcrypt.genSaltSync(10);
@@ -440,8 +452,7 @@ router.post('/AddEmployees',function(req, res, next) {
       pictureAddress : values[data].pictureAddress,
       permissionLevel : values[data].permissionLevel
     };
-    queries.addEmployee(dbconnect, employee, function (err) {
-    });
+    queries.addEmployeeSync(dbconnect, employee, officeID);
   }
   return res.send("Employees added.");
 });

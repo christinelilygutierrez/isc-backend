@@ -27,6 +27,15 @@ exports.getInitialConnection = function() {
 };
 
 // Create database if it does not exist
+exports.createDatabase = function(connection){
+  connection.query(initialize_database_query.initializeQuery, function(err, rows){
+    if (err) {
+      console.log(err);
+    }
+  });
+};
+
+// Check if database exists
 exports.existsDatabase = function(connection, callback){
   connection.query("SELECT EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'seating_lucid_agency') AS result;", function(err, rows){
     if(err) {
@@ -37,14 +46,14 @@ exports.existsDatabase = function(connection, callback){
   });
 };
 
-// Create database if it does not exist
-exports.createDatabase = function(connection){
-  connection.query(initialize_database_query.initializeQuery, function(err, rows){
-    if (err) {
+exports.useDatabase = function(connection){
+  connection.query("USE " +  env.database.name + ";", function(err, rows){
+    if(err) {
       console.log(err);
-    }
+     } else {
+     }
   });
-};
+}
 
 // Login Queries
 exports.getUser = function(connection, user, callback){
@@ -191,6 +200,32 @@ exports.addEmployee = function(connection, values, callback) {
       callback(null);
     } else {
       callback(null);
+    }
+  });
+};
+
+exports.addEmployeeSync = function(connection, values, officeID) {
+  connection.query("INSERT INTO seating_lucid_agency.employee SET ?;", values, function(err, result) {
+    if (err) {
+      console.log(err);
+    } else if (env.logQueries) {
+    } else {
+      connection.query("SELECT * FROM seating_lucid_agency.employee WHERE email = ?;", values.email, function(err, data) {
+        if (err) {
+          console.log(err);
+        } else if (env.logQueries) {
+          console.log("%s %s was retrieved from database", values[0], values[1]);
+        } else {
+          connection.query("INSERT INTO seating_lucid_agency.works_at SET ?;", {employeeKey: data[0].employeeID, officeKey: officeID}, function(err, answer) {
+            if (err) {
+              console.log(err);
+            } else if (env.logQueries) {
+              console.log("Inserted into Office");
+            } else {
+            }
+          });
+        }
+      });
     }
   });
 };
