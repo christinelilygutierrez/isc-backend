@@ -740,6 +740,16 @@ exports.editEmployeeToOffice = function(connection, values, employeeID, officeID
   });
 };
 
+exports.editEmployeeUpdatedForOffice = function(connection, values, officeID) {
+  connection.query("Update seating_lucid_agency.office SET ? WHERE officeID = ?;", [values, officeID], function(err, result) {
+    if (err) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Employee Updated for Office");
+    }
+  });
+};
+
 exports.editFloorPlan = function(connection, values, id) {
   connection.query("UPDATE seating_lucid_agency.uses SET ? WHERE floorplanKey = ?;", [values, id], function(err, result) {
     if (err) {
@@ -1132,6 +1142,19 @@ exports.getOneEmployeeConfidential = function(connection, employeeID, callback) 
   });
 };
 
+exports.getEmployeeUpdatedForOffice = function(connection, officeID, callback) {
+  connection.query("SELECT employeeUpdated FROM seating_lucid_agency.office WHERE officeID = ?;", [officeID], function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else if (env.logQueries) {
+      console.log("Employee updated: %d", result[0].employeeUpdated);
+      callback(null, result);
+    } else {
+      callback(null, result);
+    }
+  });
+};
+
 exports.getAllFloorPlans = function(connection, callback) {
   connection.query('SELECT * FROM seating_lucid_agency.floor_plan;', function(err, result) {
     if(err) {
@@ -1378,6 +1401,19 @@ exports.updateFloorplanNumberOfDesks = function(connection, floor_planID, callba
       callback(err, null);
     } else {
       callback(null, (result));
+    }
+  });
+};
+
+exports.getEmployeeProfileImage = function(connection, employeeID, callback) {
+  connection.query('SELECT pictureAddress FROM seating_lucid_agency.employee WHERE employeeID = ?', [employeeID], function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else if (env.logQueries) {
+      console.log("Employee %d picture added", employeeID);
+      callback(null, result);
+    } else {
+      callback(null, result);
     }
   });
 };

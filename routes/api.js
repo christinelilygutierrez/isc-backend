@@ -1,4 +1,5 @@
 var express = require('express');
+var path = require('path');
 var router = express.Router();
 var env = require('../env');
 var jwt    = require('jsonwebtoken');
@@ -85,6 +86,21 @@ router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
   // Update Employee Profile Image
   queries.updateEmployeeProfileImage(dbconnect, adder);
   res.status(204).end();
+});
+
+router.get('/Media/ProfileImage/:id', function (req, res, next) {
+  var employeeID = req.params.id;
+  var address;
+
+  queries.getEmployeeProfileImage(dbconnect, employeeID, function(err, result) {
+    address = result[0].pictureAddress;
+
+    address = path.join(__dirname+"./../public/documents/" + address);
+    console.log(address);
+    res.sendFile(address);
+    //res.json({"hello":"hello"});
+  });
+
 });
 
 function employeePropertiesToArray(employee){
@@ -816,6 +832,19 @@ router.post('/EditEmployee/:id', function(req, res) {
   res.send("Employee edited");
 });
 
+router.post('/EditEmployeeUpdatedForOffice/:id',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+
+  req.getConnection(function(err, connection) {
+    var office = {
+      employeeUpdated: data.employeeUpdated
+    };
+    queries.editEmployeeUpdatedForOffice(dbconnect, office, ID);
+  });
+  res.send("Office Employee Updated edited");
+});
+
 router.post('/EditOffice/:id',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
@@ -1298,6 +1327,19 @@ router.get('/EmployeeTemperatureRange/:id',function(req, res, next) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Employee #'" + req.params.id + "'s temperature range: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/EmployeesUpdatedForOffice/:id',function(req, res, next) {
+  queries.getEmployeeUpdatedForOffice(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Office " + req.params.id + "'s employee updated: " , data);
       res.json(data);
     } else {
       res.json(data);

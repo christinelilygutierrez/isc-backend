@@ -72,6 +72,7 @@ CREATE TABLE office (\
   officeCity varchar(45) NOT NULL,\
   officeState varchar(45) NOT NULL,\
   officeZipcode varchar(45) NOT NULL,\
+  employeeUpdated tinyint(1) unsigned NOT NULL DEFAULT '0',\
   PRIMARY KEY (officeID)\
 );\
 CREATE TABLE seating_lucid_agency.range (\
