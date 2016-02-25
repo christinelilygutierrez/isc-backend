@@ -1,4 +1,5 @@
 var express = require('express');
+var path = require('path');
 var router = express.Router();
 var env = require('../env');
 var jwt    = require('jsonwebtoken');
@@ -11,14 +12,45 @@ var fs = require('fs');
 
 /**************** Database Connection ****************/
 var queries = require('../database/queries');
-var dbconnect = queries.getConnection();
+var dbconnect = queries.getInitialConnection();
 dbconnect.connect(function(err){
   if(!err) {
-    console.log("Connected to seating_lucid_agency");
+    console.log("Connected to MySQL");
+    queries.existsDatabase(dbconnect, function (err, data) {
+      if (data[0].result == 1) {
+        queries.useDatabase(dbconnect);
+        console.log("Connected to seating_lucid_agency database");
+      } else {
+        console.log("Creating seating_lucid_agency");
+        queries.createDatabase(dbconnect);
+        bcrypt.genSalt(10, function(err, salt) {
+          bcrypt.hash('1234', salt, function(err, hash) {
+            var employee = {
+              firstName : 'Superadmin',
+              lastName : 'I',
+              email : 'superadmin@seatinglucidagency',
+              password : hash,
+              department : 'IT',
+              title : 'Super Admin',
+              restroomUsage : 1,
+              noisePreference : 1,
+              outOfDesk : 1,
+              pictureAddress : '',
+              permissionLevel : 'superadmin'
+            };
+            queries.addEmployee(dbconnect, employee, function (err) {
+              if (err) {
+                console.log(err);
+              }
+            });
+          });
+        });
+      }
+    });
   } else if (env.logErrors) {
-    console.log("Error connecting database", err);
+    console.log("Error connecting to MySQL", err);
   } else {
-    console.log("Error connecting database");
+    console.log("Error connecting MySQL");
   }
 });
 
@@ -54,6 +86,21 @@ router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
   // Update Employee Profile Image
   queries.updateEmployeeProfileImage(dbconnect, adder);
   res.status(204).end();
+});
+
+router.get('/Media/ProfileImage/:id', function (req, res, next) {
+  var employeeID = req.params.id;
+  var address;
+
+  queries.getEmployeeProfileImage(dbconnect, employeeID, function(err, result) {
+    address = result[0].pictureAddress;
+
+    address = path.join(__dirname+"./../public/documents/" + address);
+    console.log(address);
+    res.sendFile(address);
+    //res.json({"hello":"hello"});
+  });
+
 });
 
 function employeePropertiesToArray(employee){
@@ -235,6 +282,60 @@ router.get('/Authenticate', function(req, res){
   res.json(apiError.errors("403","denied"));
 });
 
+
+/**************** Initialization Checks ****************/
+router.get('/ExistsCompany',function(req, res, next) {
+  queries.existsCompany(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there a company? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsOffice',function(req, res, next) {
+  queries.existsOffice(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there an office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsSuperadminWithOffice',function(req, res, next) {
+  queries.existsSuperadminWithOffice(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there a superadmin associated with an office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsTemperatureRange',function(req, res, next) {
+  queries.existsTemperatureRange(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there a temperature range? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 /**************** RESTful API ****************/
 // GET /api page
 router.get('/', function(req, res, next) {
@@ -285,6 +386,11 @@ router.post('/AddDesk',function(req, res, next) {
 
 router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
+  var officeID;
+
+  if ((data.officeID) != null && (typeof data.officeID !== 'undefined')) {
+    officeID = data.officeID;
+  }
 
   bcrypt.genSalt(10, function(err, salt) {
     bcrypt.hash(data.password, salt, function(err, hash) {
@@ -316,6 +422,9 @@ router.post('/AddEmployee',function(req, res, next) {
                 //console.log("Original Data");
                 //console.log(data);
 
+                if ((officeID) != null && (typeof officeID !== 'undefined')) {
+                  queries.addEmployeeToOffice(dbconnect, {employeeKey : employeeID, officeKey : officeID});
+                }
                 queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
                 var item=0;
                 for (item in data.teammates) {
@@ -339,6 +448,9 @@ router.post('/AddEmployee',function(req, res, next) {
 
 router.post('/AddEmployees',function(req, res, next) {
   var values = JSON.parse(JSON.stringify(req.body));
+  var officeID = values.officeID;
+
+  console.log(officeID);
   values = values.employees;
   for (var data in values) {
     var salt = bcrypt.genSaltSync(10);
@@ -356,10 +468,68 @@ router.post('/AddEmployees',function(req, res, next) {
       pictureAddress : values[data].pictureAddress,
       permissionLevel : values[data].permissionLevel
     };
-    queries.addEmployee(dbconnect, employee, function (err) {
-    });
+    queries.addEmployeeSync(dbconnect, employee, officeID);
   }
   return res.send("Employees added.");
+});
+
+router.post('/AddEmployeeToOffice',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var adder = {
+      employeeKey : data.employeeID,
+      officeKey : data.officeID
+    };
+    queries.addEmployeeToOffice(dbconnect, adder);
+  });
+  res.send("Employee added to Office.");
+});
+
+
+router.post('/AddInitialOfficeWithEmployee',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var office = {
+    officeName: data.officeName,
+    officePhoneNumber: data.officePhoneNumber,
+    officeEmail: data.officeEmail,
+    officeStreetAddress: data.officeStreetAddress,
+    officeCity: data.officeCity,
+    officeState: data.officeState,
+    officeZipcode: data.officeZipcode
+  };
+  var employeeID = data.employeeID;
+  var officeID = 0;
+  var companyID = data.companyID;
+  var adder1;
+  var adder2;
+
+  req.getConnection(function(err, connection) {
+    queries.addOffice(dbconnect, office, function(err) {
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else {
+        queries.getMostRecentOffice(dbconnect, function(err, results) {
+          if (err && env.logErrors) {
+            console.log("ERROR : ", err);
+          } else {
+            officeID = results[0].officeID;
+            adder1 = {
+              employeeKey : employeeID,
+              officeKey : officeID
+            };
+            adder2 = {
+              IDforOffice : officeID,
+              IDforCompany : companyID
+            };
+            queries.addEmployeeToOffice(dbconnect, adder1);
+            queries.addOfficeToCompany(dbconnect, adder2);
+          }
+        });
+      }
+    });
+  });
+  res.send("Employee added to office");
 });
 
 router.post('/AddOffice',function(req, res, next) {
@@ -491,19 +661,94 @@ router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
 //Routing for the Delete queries
 router.get('/DeleteCompany/:id', function(req, res) {
   var ID = req.params.id;
-  queries.deleteCompany(dbconnect, ID);
+
+  queries.getAllOfficesForOneCompany(dbconnect, ID, function(err, data) {
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Deleting Company: ", ID);
+      for (var item in data) {
+        queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
+          if (err && env.logErrors) {
+            console.log("ERROR : ", err);
+          } else if (env.logQueries) {
+            console.log("Delete office: ", data[item].officeID);
+            for (var i in result) {
+              if (result[i].permissionLevel != 'superadmin') {
+                queries.deleteEmployee(dbconnect, result[i].employeeID);
+              }
+            }
+            queries.deleteOffice(dbconnect, ID);
+          } else {
+            for (var i in result) {
+              if (result[i].permissionLevel != 'superadmin') {
+                queries.deleteEmployee(dbconnect, result[i].employeeID);
+              }
+            }
+            queries.deleteOffice(dbconnect, ID);
+          }
+        });
+      }
+      queries.deleteCompany(dbconnect, ID);
+    } else {
+      for (var item in data) {
+        queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
+          if (err && env.logErrors) {
+            console.log("ERROR : ", err);
+          } else if (env.logQueries) {
+            console.log("Delete office: ", data[item].officeID);
+            for (var i in result) {
+              if (result[i].permissionLevel != 'superadmin') {
+                queries.deleteEmployee(dbconnect, result[i].employeeID);
+              }
+            }
+            queries.deleteOffice(dbconnect, ID);
+          } else {
+            for (var i in result) {
+              if (result[i].permissionLevel != 'superadmin') {
+                queries.deleteEmployee(dbconnect, result[i].employeeID);
+              }
+            }
+            queries.deleteOffice(dbconnect, ID);
+          }
+        });
+      }
+      queries.deleteCompany(dbconnect, ID);
+    }
+  });
   res.send("Company deleted.");
 });
 
 router.get('/DeleteEmployee/:id', function(req, res) {
   var ID = req.params.id;
+
   queries.deleteEmployee(dbconnect, ID);
   res.send("Employee deleted.");
 });
 
 router.get('/DeleteOffice/:id', function(req, res) {
   var ID = req.params.id;
-  queries.deleteOffice(dbconnect, ID);
+
+  queries.getAllEmployeesForOneOfficeConfidential(dbconnect, ID, function(err, data) {
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Delete office: ", ID);
+      for (var item in data) {
+        if (data[item].permissionLevel != 'superadmin') {
+          queries.deleteEmployee(dbconnect, data[item].employeeID);
+        }
+      }
+      queries.deleteOffice(dbconnect, ID);
+    } else {
+      for (var item in data) {
+        if (data[item].permissionLevel != 'superadmin') {
+          queries.deleteEmployee(dbconnect, data[item].employeeID);
+        }
+      }
+      queries.deleteOffice(dbconnect, ID);
+    }
+  });
   res.send("Office deleted.");
 });
 
@@ -562,7 +807,6 @@ router.post('/UpdateCoworkers/:id', function(req, res) {
 router.post('/EditEmployee/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
-
   bcrypt.genSalt(10, function(err, salt) {
     bcrypt.hash(data.password, salt, function(err, hash) {
       req.getConnection(function(err, connection) {
@@ -577,13 +821,28 @@ router.post('/EditEmployee/:id', function(req, res) {
           noisePreference : data.noisePreference,
           outOfDesk : data.outOfDesk,
           pictureAddress : data.pictureAddress,
-          permissionLevel : data.permissionLevel
+          permissionLevel : data.permissionLevel,
+          haveUpdated : 1,
+          accountUpdated: moment().format('YYYY-MM-DD hh:mm:ss')
         };
         queries.editEmployee(dbconnect, employee, ID);
       });
     });
   });
   res.send("Employee edited");
+});
+
+router.post('/EditEmployeeUpdatedForOffice/:id',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+
+  req.getConnection(function(err, connection) {
+    var office = {
+      employeeUpdated: data.employeeUpdated
+    };
+    queries.editEmployeeUpdatedForOffice(dbconnect, office, ID);
+  });
+  res.send("Office Employee Updated edited");
 });
 
 router.post('/EditOffice/:id',function(req, res, next) {
@@ -1049,12 +1308,38 @@ router.get('/EmployeeTeammatesConfidential/:id',function(req, res, next) {
   });
 });
 
+router.get('/EmployeesNotInTeammates/:employeeID/:officeID',function(req, res, next) {
+  queries.getAllEmployeesNotInTeammatesForOffice(dbconnect, req.params.employeeID, req.params.officeID, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("All employees not in teammates of #" + req.params.emloyeeID + ": ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/EmployeeTemperatureRange/:id',function(req, res, next) {
   queries.getTempRangeOfOneEmployee(dbconnect, req.params.id, function(err, data){
     if (err && env.logErrors) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Employee #'" + req.params.id + "'s temperature range: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/EmployeesUpdatedForOffice/:id',function(req, res, next) {
+  queries.getEmployeeUpdatedForOffice(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Office " + req.params.id + "'s employee updated: " , data);
       res.json(data);
     } else {
       res.json(data);
