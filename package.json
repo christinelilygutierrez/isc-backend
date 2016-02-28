@@ -24,6 +24,7 @@
     "mysql": "^2.5.5",
     "node-uuid": "^1.4.7",
     "password-hash": "~1.2.2",
+    "postmark": "^1.2.1",
     "serve-favicon": "~2.3.0"
   }
 }

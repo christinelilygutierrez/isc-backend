@@ -7,7 +7,7 @@ var apiError = require('../database/api_errors');
 
 /************** Modules for Database **************/
 var mysql = require('mysql');
-var render_queries = require('../database/render_api');
+var render_queries = require('../database/backendtest');
 var connection  = require('express-myconnection');
 
 /************** Connect to MySQL **************/
