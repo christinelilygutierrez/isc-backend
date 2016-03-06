@@ -201,6 +201,7 @@ router.post('/Authenticate', function(req, res){
               employee.password = dbUser.password;
               token = jwt.sign(employee, "test", {
                   expiresIn: moment().add(1, 'days').valueOf() // expires in 24 hours
+                  //expiresInSeconds: 5
               });
               res.json({
                 success: true,
@@ -250,11 +251,11 @@ router.get('/Verify/', function(req, res, next) {
      // verifies secret and checks exp
      jwt.verify(token, 'test', function(err, decoded) {
        if (err) {
-         res.json({ success: false, message: 'Failed to authenticate token.' });
+         res.status(403).json({ success: false, message: 'Failed to authenticate token.' });
        } else {
          // If everything is good, save to request for use in other routes
          if (decoded.exp <= Date.now()) {
-           res.json(apiResponse.errors(true, "Token has expired"));
+           res.status(403).json(apiResponse.errors(true, "Token has expired"));
          } else {
            req.decoded = decoded;
            //console.log(req.decoded);
@@ -388,16 +389,22 @@ router.get('/', function(req, res, next) {
 // Routing for the Add queries
 router.post('/AddCompany',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
-
-  req.getConnection(function(err, connection) {
-    var company = {
-      companyName : data.companyName
-    };
-    queries.addCompany(dbconnect, company);
-  });
-  res.send("Company Added.");
+  if(data){
+    if(data.companyName){
+      req.getConnection(function(err, connection) {
+        var company = {
+          companyName : data.companyName
+        };
+        queries.addCompany(dbconnect, company);
+      });
+      res.status(200).json(apiResponse.created("Company Added."));
+    }else{
+      res.status(400).json(apiResponse.errors(true, "Missing Company Name"));
+    }
+  }else{
+    res.status(400).json(apiResponse.errors(true, "invalid json"));
+  }
 });
-
 
 router.post('/AddCluster',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
@@ -817,16 +824,29 @@ router.get('/DeleteTemperatureRange/:id', function(req, res) {
 router.post('/EditCompany/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
-
-  req.getConnection(function(err, connection) {
-    var company = {
-      companyName : data.companyName
-    };
-    queries.editCompany(dbconnect, company, ID);
-  });
-  res.send("Company edited");
+  if(isNaN(ID)){
+     res.status(400).json(apiResponse.errors(true, "not a valid id"));
+  }
+  else{
+    if(data){
+      if(data.company){
+        req.getConnection(function(err, connection) {
+          var company = {
+            companyName : data.companyName
+          };
+          queries.editCompany(dbconnect, company, ID);
+        });
+        res.status(200).json(apiResponse.created("Company edited"));
+      }
+      else{
+          res.status(400).json(apiResponse.errors(true, "missing company name"));
+      }
+    }
+    else{
+      res.status(400).json(apiResponse.errors(true, "missing company name"));
+    }
+  }
 });
-
 router.post('/UpdateCoworkers/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;

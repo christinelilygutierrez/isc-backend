@@ -41,3 +41,9 @@ curl -k 'http://localhost:3001/api/Verify?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1
 
 curl -k 'http://localhost:3001/api/Verify?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9'
 {"success":false,"message":"Token has expired"}
+
+
+# expires n seconds
+
+curl -k -H "Content-Type: application/json" -X POST -d '{"email":"alice@asu.edu", "password": "1234"}' http://localhost:3001/api/Authenticate
+{"success":true,"message":"Enjoy your token!","token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFsaWNlQGFzdS5lZHUiLCJwYXNzd29yZCI6IiQyYSQxMCRwSFovcnNueXdWUmFEZUcxRDJaVlN1bWs5bndZUGhuZVoxa0djbVJMVTlHTndUSW9CLmFIYSIsImlhdCI6MTQ1NzIzMjg0NCwiZXhwIjoxNDU3MjMyODQ5fQ.m3AOzudSeyjqQipkqVgdQN4yEoSSExmwPkvII2207V0"}

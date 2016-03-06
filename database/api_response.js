@@ -13,3 +13,12 @@ exports.success=function(obj){
   };
   return res;
 };
+
+
+exports.created=function(obj){
+  var res={
+    success: true,
+    message: obj
+  };
+  return res;
+};
