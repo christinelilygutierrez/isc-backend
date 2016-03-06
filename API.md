@@ -1,15 +1,15 @@
 # ISC API
 
 Errors
-Code	|Name|	Description
---- | --- | ---
+
+|Code	|Name|	Description|
+|---|---|---|
 200 | OK| Everything worked successfully!
 201 | Created | When you're creating a new resource , this will be returned uponsuccess.
 400 | Bad Request | We could not process the action
 403 | Forbidden | We couldn't authenticate you, or you don't have access to that order.
 
 All errors will return a JSON blob in the following format:
-
 ```json
 {
   "error": true,
