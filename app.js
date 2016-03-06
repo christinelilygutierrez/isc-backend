@@ -37,8 +37,17 @@ app.set('view engine', 'jade');
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('dev'));
 app.use(bodyParser.json());
+app.use(function (error, req, res, next){
+    var result ={
+      'error': true,
+      'message': 'invalid json'
+    };
+    res.status(400).json(result)
+});
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+
 
 /************** Static files like js, CSS, images **************/
 // Reference all materials in the public directory
@@ -120,12 +129,12 @@ var dailyEmailJob = new cronJob( '57 16 * * *', function(){
         client.sendEmail({
           "From": "djgraca@asu.edu",
           "To": val.email,
-          "Subject": 'Please Update Your Preferences', 
+          "Subject": 'Please Update Your Preferences',
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
         });
       }
 
-      
+
     }
   });
 },  null, true);
@@ -154,12 +163,12 @@ var fiveDayEmailJob = new cronJob( '57 16 * * *', function(){
         client.sendEmail({
           "From": "djgraca@asu.edu",
           "To": val.email,
-          "Subject": 'Please Update Your Preferences', 
+          "Subject": 'Please Update Your Preferences',
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
         });
       }
 
-      
+
     }
   });
 },  null, true);
@@ -189,12 +198,12 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
         client.sendEmail({
           "From": "djgraca@asu.edu",
           "To": val.email,
-          "Subject": 'Please Update Your Preferences', 
+          "Subject": 'Please Update Your Preferences',
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
         });
       }
 
-      
+
     }
   });
 },  null, true);
@@ -218,18 +227,18 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
 
 
       for (var i in email) {
-        
+
         val = email[i];
         console.log(val.email);
         client.sendEmail({
               "From": "djgraca@asu.edu",
               "To": val.email,
-              "Subject": "It's Been Awhile...", 
+              "Subject": "It's Been Awhile...",
               "TextBody": "Looks like you haven't updated your preferences in awhile!  If you need to update please login at DeskSeeker now!"
           });
       }
 
-      
+
     }
   });
 

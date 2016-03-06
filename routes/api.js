@@ -3,7 +3,7 @@ var path = require('path');
 var router = express.Router();
 var env = require('../env');
 var jwt    = require('jsonwebtoken');
-var apiError = require('../database/api_errors');
+var apiResponse = require('../database/api_response');
 var uuid = require('node-uuid');
 var moment = require('moment');
 var bcrypt = require('bcrypt');
@@ -69,7 +69,7 @@ var storage = multer.diskStorage({
     var originalname =file.originalname;
     var fileExtension = originalname.slice((originalname.lastIndexOf(".") - 1 >>> 0) + 2);
     var fileName = uuid.v4();
-    var newFileName = fileName + Date.now() + '.'+ fileExtension;
+    var newFileName = fileName + '.'+ fileExtension;
     callback(null, newFileName);
   }
 });
@@ -77,15 +77,53 @@ var upload = multer({ storage: storage });
 
 router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
   var file = req.file;
-  var data = JSON.parse(JSON.stringify(req.body));
-  var adder = {
-    pictureAddress: file.filename,
-    employeeID: data.employeeID
-  };
+  if(file){
+    var data = null;
+    var err = false;
+    try {
+      data=JSON.parse(JSON.stringify(req.body));
+    } catch (e) {
+          err=true;
+    }
+    if(err){
+      res.status(400).json(apiResponse.errors(true, 'invalid json'));
+    }
+    else if(data){
+      if(data.employeeID){
 
-  // Update Employee Profile Image
-  queries.updateEmployeeProfileImage(dbconnect, adder);
-  res.status(204).end();
+          // try{
+          //   var temp=ParseInt(data.employeeID.toString());
+          // }
+          // catch(e){
+          //   err=true;
+          // }
+          // if(err){
+          //    res.status(400).json(apiResponse.errors(true, 'invalid employeeID'));
+          // }
+          // else{
+            var adder = {
+              pictureAddress: file.filename,
+              employeeID: data.employeeID
+            };
+            queries.updateEmployeeProfileImage(dbconnect, adder);
+            var response = {
+              success: true,
+              fileName: file.filename
+            };
+            res.status(200).json(response);
+         //}
+      }
+      else{
+        res.status(400).json(apiResponse.errors(true, 'missing employeeID'));
+      }
+    }
+    else{
+        res.status(400).json(apiResponse.errors(true, 'missing parameters'));
+    }
+  }
+  else{
+    res.status(400).json(apiResponse.errors(true, 'missing file'));
+  }
 });
 
 router.get('/Media/ProfileImage/:id', function (req, res, next) {
@@ -93,12 +131,18 @@ router.get('/Media/ProfileImage/:id', function (req, res, next) {
   var address;
 
   queries.getEmployeeProfileImage(dbconnect, employeeID, function(err, result) {
-    address = result[0].pictureAddress;
-
-    address = path.join(__dirname+"./../public/documents/" + address);
-    console.log(address);
-    res.sendFile(address);
-    //res.json({"hello":"hello"});
+    if(isNaN(employeeID)){
+        res.status(400).json(apiResponse.errors(true, "invalid employee id"));
+    }
+    else if(result.length < 1){
+      res.status(400).json(apiResponse.errors(true, "no such employee"));
+    }
+    else{
+      address = result[0].pictureAddress;
+      address = path.join(__dirname+"./../public/documents/" + address);
+      console.log(address);
+      res.sendFile(address);
+    }
   });
 
 });
@@ -108,7 +152,7 @@ function employeePropertiesToArray(employee){
      return employee[k];
    }
  );
-};
+}
 
 router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
   var file = req.file;
@@ -124,8 +168,7 @@ router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
     }
   });
   rs.pipe(parser);
-  //console.log(file.filename);
-  res.status(204).end();
+  res.status(204).json(apiResponse.errors(false, "employees added"));
 });
 
 /**************** Login Implementationn ****************/
@@ -141,17 +184,17 @@ router.post('/Authenticate', function(req, res){
   try {
      employee = JSON.parse(JSON.stringify(req.body));
   } catch (e) {
-    res.json(apiError.errors("401","problems parsing json"));
+    res.json(apiResponse.errors(true,"invalid json"));
   }
   u = employee.email;
   p = employee.password;
   if ( u === undefined || u === null || p === undefined || p === null) {
-    res.json(apiError.errors("401", "Missing parameters"));
+    res.status(400).json(apiResponse.errors(true, "missing parameters"));
   } else {
     queries.getUser(dbconnect, employee, function(err, rows){
       if (!err) {
         if (rows.length < 1) {
-          res.json({ success: false, message: 'Authentication failed. User not found.' });
+          res.json({ success: false, message: 'Authentication failed. Wrong username and password' });
         } else {
             dbUser = JSON.parse(JSON.stringify(rows[0]));
             if (dbUser.email === u && bcrypt.compareSync(p, dbUser.password)) {
@@ -165,11 +208,11 @@ router.post('/Authenticate', function(req, res){
                 token: token
               });
             } else{
-              res.json({ success: false, message: 'Authentication failed. Wrong password.' });
+              res.json({ success: false, message: 'Authentication failed. Wrong username and password' });
             }
         }
       } else{
-        res.json({ success: false, message: 'Authentication failed. User not found.' });
+        res.json({ success: false, message: 'Authentication failed. Wrong username and password' });
       }
     });
   }
@@ -182,12 +225,12 @@ router.post('/Authenticate', function(req, res){
   try {
     user = JSON.parse(JSON.stringify(req.body));
   } catch (e) {
-    res.json(apiError.errors("401","problems parsing json"));
+    res.json(apiResponse.errors("401","problems parsing json"));
   }
   var u = user.username;
   var p = user.password;
   if(u === undefined|| u === null || p === undefined || p === null) {
-    res.json(apiError.errors("401", "Missing parameters"));
+    res.json(apiResponse.errors("401", "Missing parameters"));
   } else{
     queries.saveUser(dbconnect, user, function(err){
       if(err){
@@ -211,12 +254,12 @@ router.get('/Verify/', function(req, res, next) {
        } else {
          // If everything is good, save to request for use in other routes
          if (decoded.exp <= Date.now()) {
-           return res.json(apiError.errors("400", "Token has expired"));
+           res.json(apiResponse.errors(true, "Token has expired"));
          } else {
            req.decoded = decoded;
            //console.log(req.decoded);
            queries.validatedToken(dbconnect, req.decoded.email, req.decoded.password, function(err, results) {
-             return res.json(results);
+             res.json(results);
            });
          }
        }
@@ -224,7 +267,7 @@ router.get('/Verify/', function(req, res, next) {
    } else {
      // if there is no token
      // return an error
-     return res.status(403).send({
+     res.status(403).json({
          success: false,
          message: 'No token provided.'
      });
@@ -279,7 +322,7 @@ router.get('/users', function(req, res){
 });*/
 
 router.get('/Authenticate', function(req, res){
-  res.json(apiError.errors("403","denied"));
+  res.status(405).json(apiResponse.errors(true,"method not supported"));
 });
 
 
@@ -287,7 +330,7 @@ router.get('/Authenticate', function(req, res){
 router.get('/ExistsCompany',function(req, res, next) {
   queries.existsCompany(dbconnect, function(err, data){
     if (err && env.logErrors) {
-      console.log("ERROR : ", err);
+   console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Is there a company? 0 means no and 1 means yes: " , data);
       res.json(data);
@@ -388,7 +431,7 @@ router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
   var officeID;
 
-  if ((data.officeID) != null && (typeof data.officeID !== 'undefined')) {
+  if ((data.officeID) !== null && (typeof data.officeID !== 'undefined')) {
     officeID = data.officeID;
   }
 
@@ -422,7 +465,7 @@ router.post('/AddEmployee',function(req, res, next) {
                 //console.log("Original Data");
                 //console.log(data);
 
-                if ((officeID) != null && (typeof officeID !== 'undefined')) {
+                if ((officeID) !== null && (typeof officeID !== 'undefined')) {
                   queries.addEmployeeToOffice(dbconnect, {employeeKey : employeeID, officeKey : officeID});
                 }
                 queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
@@ -1484,7 +1527,7 @@ router.post('/UpdatePassword',function(req, res) {
     var query = JSON.parse(JSON.stringify(data));
     if (err) {
       return res.json({error: err});
-    } 
+    }
     else {
       bcrypt.genSalt(10, function(err, salt) {
         if(bcrypt.compareSync(passwords.oldPassword, query[0].password)){
@@ -1528,7 +1571,7 @@ router.post('/PasswordReset', function(req, res){
   // Require
   var postmark = require("postmark");
 
-  
+
   var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
 
   queries.getUser(dbconnect, user, function(err, data){
@@ -1562,7 +1605,7 @@ router.post('/PasswordReset', function(req, res){
       client.sendEmail({
           "From": "djgraca@asu.edu",
           "To": user.email,
-          "Subject": 'You have requested a Password Reset', 
+          "Subject": 'You have requested a Password Reset',
           "TextBody": "Please use this temporary password to login: "+newPassword
       });
       res.send("Password Reset");
@@ -1580,7 +1623,7 @@ router.post('/SendEmail',function(req, res, next) {
   var emailData = JSON.parse(JSON.stringify(req.body));
   //Admin Reasons: Password update, password reset request, employee preferences changed (daily)
   //User Reasons: When added to update profile, then 5 days later remind them, after that every 10 days, then suggest update every 92 days
-  
+
   // Require
   var postmark = require("postmark");
 
@@ -1604,7 +1647,7 @@ router.post('/SendEmail',function(req, res, next) {
           client.sendEmail({
             "From": "djgraca@asu.edu",
             "To": val.email,
-            "Subject": 'Someone has Updated their Password', 
+            "Subject": 'Someone has Updated their Password',
             "TextBody": emailData.email+" has updated their password."
           });
         }
@@ -1628,7 +1671,7 @@ router.post('/SendEmail',function(req, res, next) {
           client.sendEmail({
             "From": "djgraca@asu.edu",
             "To": val.email,
-            "Subject": 'Someone has Requested a Password Reset', 
+            "Subject": 'Someone has Requested a Password Reset',
             "TextBody": emailData.email+" has requested a password reset and has been given a temporary password."
           });
         }
@@ -1652,12 +1695,12 @@ router.post('/SendEmail',function(req, res, next) {
           client.sendEmail({
             "From": "djgraca@asu.edu",
             "To": val.email,
-            "Subject": 'Seating Chart Update Recommended', 
+            "Subject": 'Seating Chart Update Recommended',
             "TextBody": "Employee(s) have updated their preferences and the Seating Chart recommendation may have changed."
           });
         }
 
-        
+
       }
     });
 
@@ -1668,7 +1711,7 @@ router.post('/SendEmail',function(req, res, next) {
     client.sendEmail({
         "From": "djgraca@asu.edu",
         "To": emailData.to,
-        "Subject": 'Welcome to DeskSeeker!', 
+        "Subject": 'Welcome to DeskSeeker!',
         "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password
     });
   }

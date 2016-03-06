@@ -3,7 +3,7 @@ var router = express.Router();
 var env = require('../env');
 var path = require('path');
 var jwt    = require('jsonwebtoken');
-var apiError = require('../database/api_errors');
+var apiResponse = require('../database/api_response');
 
 /************** Modules for Database **************/
 var mysql = require('mysql');
@@ -72,6 +72,7 @@ router.get('/login',function(req, res, next){
 });*/
 
 /* GET home page. */
+
 router.get('/', function(req, res, next) {
   requireRole("user");
   res.render('index', {title: 'Lucid Agency Express Framework Testing'});

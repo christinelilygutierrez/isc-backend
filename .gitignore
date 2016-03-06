@@ -3,3 +3,4 @@ node_modules
 .localized
 ~.swp
 env.js
+node_modules/

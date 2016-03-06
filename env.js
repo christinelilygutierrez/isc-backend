@@ -9,7 +9,7 @@ const env = {
     host: 'localhost',
     name: 'seating_lucid_agency',
     user: 'root',
-    pass: '',
+    pass: 'atkawa7',
     port: 3306,
     multipleStatements: true
   },
