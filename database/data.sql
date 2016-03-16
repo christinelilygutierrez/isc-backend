@@ -1,5 +1,3 @@
-create database seating_lucid_agency;
-
 use seating_lucid_agency;
 
 -- MySQL dump 10.13  Distrib 5.7.10, for Linux (x86_64)
@@ -140,7 +138,7 @@ CREATE TABLE `employee` (
   `restroomUsage` int(10) unsigned NOT NULL,
   `noisePreference` int(10) unsigned NOT NULL,
   `outOfDesk` int(10) unsigned NOT NULL,
-  `pictureAddress` varchar(30) NOT NULL,
+  `pictureAddress` varchar(100) NOT NULL,
   `permissionLevel` varchar(30) NOT NULL,
   PRIMARY KEY (`employeeID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8;

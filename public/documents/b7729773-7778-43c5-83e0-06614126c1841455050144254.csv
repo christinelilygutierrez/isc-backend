@@ -1,6 +1,0 @@
-id,firstName,lastName,email,password,department,title,restroomUsage,noisePreference,outOfDesk,pictureAddress,permissionLevel
-1,alice,alice,alice@asu.edu,1234,health,physician,0,0,0,alice.jpg,high
-2,bob,bob,bob@asu.edu,1234,health,physician,0,0,0,bob.jpg,high
-3,jim,jim,jim@asu.edu,1234,health,physician,0,0,0,jim.jpg,high
-4,tim,tim,tim@asu.edu,1234,health,physician,0,0,0,tim.jpg,high
-5,zayn,zayn,zayn@asu.edu,1234,health,physician,0,0,0,zayn.jpg,high

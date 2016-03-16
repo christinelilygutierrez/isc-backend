@@ -1,8 +1,9 @@
 var express = require('express');
+var path = require('path');
 var router = express.Router();
 var env = require('../env');
 var jwt    = require('jsonwebtoken');
-var apiError = require('../database/api_errors');
+var apiResponse = require('../database/api_response');
 var uuid = require('node-uuid');
 var moment = require('moment');
 var bcrypt = require('bcrypt');
@@ -11,17 +12,49 @@ var fs = require('fs');
 
 /**************** Database Connection ****************/
 var queries = require('../database/queries');
-var dbconnect = queries.getConnection();
+var dbconnect = queries.getInitialConnection();
 dbconnect.connect(function(err){
   if(!err) {
-    console.log("Connected to seating_lucid_agency");
+    console.log("Connected to MySQL");
+    queries.existsDatabase(dbconnect, function (err, data) {
+      if (data[0].result == 1) {
+        queries.useDatabase(dbconnect);
+        console.log("Connected to seating_lucid_agency database");
+      } else {
+        console.log("Creating seating_lucid_agency");
+        queries.createDatabase(dbconnect);
+        bcrypt.genSalt(10, function(err, salt) {
+          bcrypt.hash('1234', salt, function(err, hash) {
+            var employee = {
+              firstName : 'Superadmin',
+              lastName : 'I',
+              email : 'superadmin@seatinglucidagency',
+              password : hash,
+              department : 'IT',
+              title : 'Super Admin',
+              restroomUsage : 1,
+              noisePreference : 1,
+              outOfDesk : 1,
+              pictureAddress : '',
+              permissionLevel : 'superadmin'
+            };
+            queries.addEmployee(dbconnect, employee, function (err) {
+              if (err) {
+                console.log(err);
+              }
+            });
+          });
+        });
+      }
+    });
   } else if (env.logErrors) {
-    console.log("Error connecting database", err);
+    console.log("Error connecting to MySQL", err);
   } else {
-    console.log("Error connecting database");
+    console.log("Error connecting MySQL");
   }
 });
 
+/**************** File Upload ****************/
 var multer  = require('multer');
 // File Upload
 var storage = multer.diskStorage({
@@ -36,7 +69,7 @@ var storage = multer.diskStorage({
     var originalname =file.originalname;
     var fileExtension = originalname.slice((originalname.lastIndexOf(".") - 1 >>> 0) + 2);
     var fileName = uuid.v4();
-    var newFileName = fileName + Date.now() + '.'+ fileExtension;
+    var newFileName = fileName + '.'+ fileExtension;
     callback(null, newFileName);
   }
 });
@@ -44,11 +77,74 @@ var upload = multer({ storage: storage });
 
 router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
   var file = req.file;
+  if(file){
+    var data = null;
+    var err = false;
+    try {
+      data=JSON.parse(JSON.stringify(req.body));
+    } catch (e) {
+          err=true;
+    }
+    if(err){
+      res.status(400).json(apiResponse.errors(true, 'invalid json'));
+    }
+    else if(data){
+      if(data.employeeID){
 
-  console.log("success");
-  //console.log(req.file);
-  console.log(file.filename);
-  res.status(204).end();
+          // try{
+          //   var temp=ParseInt(data.employeeID.toString());
+          // }
+          // catch(e){
+          //   err=true;
+          // }
+          // if(err){
+          //    res.status(400).json(apiResponse.errors(true, 'invalid employeeID'));
+          // }
+          // else{
+            var adder = {
+              pictureAddress: file.filename,
+              employeeID: data.employeeID
+            };
+            queries.updateEmployeeProfileImage(dbconnect, adder);
+            var response = {
+              success: true,
+              fileName: file.filename
+            };
+            res.status(200).json(response);
+         //}
+      }
+      else{
+        res.status(400).json(apiResponse.errors(true, 'missing employeeID'));
+      }
+    }
+    else{
+        res.status(400).json(apiResponse.errors(true, 'missing parameters'));
+    }
+  }
+  else{
+    res.status(400).json(apiResponse.errors(true, 'missing file'));
+  }
+});
+
+router.get('/Media/ProfileImage/:id', function (req, res, next) {
+  var employeeID = req.params.id;
+  var address;
+
+  queries.getEmployeeProfileImage(dbconnect, employeeID, function(err, result) {
+    if(isNaN(employeeID)){
+        res.status(400).json(apiResponse.errors(true, "invalid employee id"));
+    }
+    else if(result.length < 1){
+      res.status(400).json(apiResponse.errors(true, "no such employee"));
+    }
+    else{
+      address = result[0].pictureAddress;
+      address = path.join(__dirname+"./../public/documents/" + address);
+      console.log(address);
+      res.sendFile(address);
+    }
+  });
+
 });
 
 function employeePropertiesToArray(employee){
@@ -57,9 +153,8 @@ function employeePropertiesToArray(employee){
    }
  );
 }
-router.post('/Upload/Csv', upload.single('file'), function (req, res, next) {
-  //console.log("success");
-  //console.log(req.file);
+
+router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
   var file = req.file;
   var rs = fs.createReadStream(file.path);
   parser = csvParser({columns: true}, function(err, employees){
@@ -71,11 +166,9 @@ router.post('/Upload/Csv', upload.single('file'), function (req, res, next) {
       var arr = employeePropertiesToArray(employee);
       values.push(arr);
     }
-    queries.bulkInsert(dbconnect, values);
-});
-rs.pipe(parser);
-//console.log(file.filename);
-res.status(204).end();
+  });
+  rs.pipe(parser);
+  res.status(204).json(apiResponse.errors(false, "employees added"));
 });
 
 /**************** Login Implementationn ****************/
@@ -91,23 +184,24 @@ router.post('/Authenticate', function(req, res){
   try {
      employee = JSON.parse(JSON.stringify(req.body));
   } catch (e) {
-    res.json(apiError.errors("401","problems parsing json"));
+    res.json(apiResponse.errors(true,"invalid json"));
   }
   u = employee.email;
   p = employee.password;
   if ( u === undefined || u === null || p === undefined || p === null) {
-    res.json(apiError.errors("401", "Missing parameters"));
+    res.status(400).json(apiResponse.errors(true, "missing parameters"));
   } else {
     queries.getUser(dbconnect, employee, function(err, rows){
       if (!err) {
         if (rows.length < 1) {
-          res.json({ success: false, message: 'Authentication failed. User not found.' });
+          res.json({ success: false, message: 'Authentication failed. Wrong username and password' });
         } else {
             dbUser = JSON.parse(JSON.stringify(rows[0]));
             if (dbUser.email === u && bcrypt.compareSync(p, dbUser.password)) {
               employee.password = dbUser.password;
               token = jwt.sign(employee, "test", {
                   expiresIn: moment().add(1, 'days').valueOf() // expires in 24 hours
+                  //expiresInSeconds: 5
               });
               res.json({
                 success: true,
@@ -115,11 +209,11 @@ router.post('/Authenticate', function(req, res){
                 token: token
               });
             } else{
-              res.json({ success: false, message: 'Authentication failed. Wrong password.' });
+              res.json({ success: false, message: 'Authentication failed. Wrong username and password' });
             }
         }
       } else{
-        res.json({ success: false, message: 'Authentication failed. User not found.' });
+        res.json({ success: false, message: 'Authentication failed. Wrong username and password' });
       }
     });
   }
@@ -132,12 +226,12 @@ router.post('/Authenticate', function(req, res){
   try {
     user = JSON.parse(JSON.stringify(req.body));
   } catch (e) {
-    res.json(apiError.errors("401","problems parsing json"));
+    res.json(apiResponse.errors("401","problems parsing json"));
   }
   var u = user.username;
   var p = user.password;
   if(u === undefined|| u === null || p === undefined || p === null) {
-    res.json(apiError.errors("401", "Missing parameters"));
+    res.json(apiResponse.errors("401", "Missing parameters"));
   } else{
     queries.saveUser(dbconnect, user, function(err){
       if(err){
@@ -157,16 +251,16 @@ router.get('/Verify/', function(req, res, next) {
      // verifies secret and checks exp
      jwt.verify(token, 'test', function(err, decoded) {
        if (err) {
-         res.json({ success: false, message: 'Failed to authenticate token.' });
+         res.status(403).json({ success: false, message: 'Failed to authenticate token.' });
        } else {
          // If everything is good, save to request for use in other routes
          if (decoded.exp <= Date.now()) {
-           return res.json(apiError.errors("400", "Token has expired"));
+           res.status(403).json(apiResponse.errors(true, "Token has expired"));
          } else {
            req.decoded = decoded;
            //console.log(req.decoded);
            queries.validatedToken(dbconnect, req.decoded.email, req.decoded.password, function(err, results) {
-             return res.json(results);
+             res.json(results);
            });
          }
        }
@@ -174,7 +268,7 @@ router.get('/Verify/', function(req, res, next) {
    } else {
      // if there is no token
      // return an error
-     return res.status(403).send({
+     res.status(403).json({
          success: false,
          message: 'No token provided.'
      });
@@ -229,7 +323,61 @@ router.get('/users', function(req, res){
 });*/
 
 router.get('/Authenticate', function(req, res){
-  res.json(apiError.errors("403","denied"));
+  res.status(405).json(apiResponse.errors(true,"method not supported"));
+});
+
+
+/**************** Initialization Checks ****************/
+router.get('/ExistsCompany',function(req, res, next) {
+  queries.existsCompany(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+   console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there a company? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsOffice',function(req, res, next) {
+  queries.existsOffice(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there an office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsSuperadminWithOffice',function(req, res, next) {
+  queries.existsSuperadminWithOffice(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there a superadmin associated with an office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsTemperatureRange',function(req, res, next) {
+  queries.existsTemperatureRange(dbconnect, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Is there a temperature range? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
 });
 
 /**************** RESTful API ****************/
@@ -241,16 +389,22 @@ router.get('/', function(req, res, next) {
 // Routing for the Add queries
 router.post('/AddCompany',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
-
-  req.getConnection(function(err, connection) {
-    var company = {
-      companyName : data.companyName
-    };
-    queries.addCompany(dbconnect, company);
-  });
-  res.send("Company Added.");
+  if(data){
+    if(data.companyName){
+      req.getConnection(function(err, connection) {
+        var company = {
+          companyName : data.companyName
+        };
+        queries.addCompany(dbconnect, company);
+      });
+      res.status(200).json(apiResponse.created("Company Added."));
+    }else{
+      res.status(400).json(apiResponse.errors(true, "Missing Company Name"));
+    }
+  }else{
+    res.status(400).json(apiResponse.errors(true, "invalid json"));
+  }
 });
-
 
 router.post('/AddCluster',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
@@ -282,6 +436,11 @@ router.post('/AddDesk',function(req, res, next) {
 
 router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
+  var officeID;
+
+  if ((data.officeID) !== null && (typeof data.officeID !== 'undefined')) {
+    officeID = data.officeID;
+  }
 
   bcrypt.genSalt(10, function(err, salt) {
     bcrypt.hash(data.password, salt, function(err, hash) {
@@ -313,6 +472,9 @@ router.post('/AddEmployee',function(req, res, next) {
                 //console.log("Original Data");
                 //console.log(data);
 
+                if ((officeID) !== null && (typeof officeID !== 'undefined')) {
+                  queries.addEmployeeToOffice(dbconnect, {employeeKey : employeeID, officeKey : officeID});
+                }
                 queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
                 var item=0;
                 for (item in data.teammates) {
@@ -336,6 +498,9 @@ router.post('/AddEmployee',function(req, res, next) {
 
 router.post('/AddEmployees',function(req, res, next) {
   var values = JSON.parse(JSON.stringify(req.body));
+  var officeID = values.officeID;
+
+  console.log(officeID);
   values = values.employees;
   for (var data in values) {
     var salt = bcrypt.genSaltSync(10);
@@ -353,10 +518,68 @@ router.post('/AddEmployees',function(req, res, next) {
       pictureAddress : values[data].pictureAddress,
       permissionLevel : values[data].permissionLevel
     };
-    queries.addEmployee(dbconnect, employee, function (err) {
-    });
+    queries.addEmployeeSync(dbconnect, employee, officeID);
   }
   return res.send("Employees added.");
+});
+
+router.post('/AddEmployeeToOffice',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var adder = {
+      employeeKey : data.employeeID,
+      officeKey : data.officeID
+    };
+    queries.addEmployeeToOffice(dbconnect, adder);
+  });
+  res.send("Employee added to Office.");
+});
+
+
+router.post('/AddInitialOfficeWithEmployee',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var office = {
+    officeName: data.officeName,
+    officePhoneNumber: data.officePhoneNumber,
+    officeEmail: data.officeEmail,
+    officeStreetAddress: data.officeStreetAddress,
+    officeCity: data.officeCity,
+    officeState: data.officeState,
+    officeZipcode: data.officeZipcode
+  };
+  var employeeID = data.employeeID;
+  var officeID = 0;
+  var companyID = data.companyID;
+  var adder1;
+  var adder2;
+
+  req.getConnection(function(err, connection) {
+    queries.addOffice(dbconnect, office, function(err) {
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else {
+        queries.getMostRecentOffice(dbconnect, function(err, results) {
+          if (err && env.logErrors) {
+            console.log("ERROR : ", err);
+          } else {
+            officeID = results[0].officeID;
+            adder1 = {
+              employeeKey : employeeID,
+              officeKey : officeID
+            };
+            adder2 = {
+              IDforOffice : officeID,
+              IDforCompany : companyID
+            };
+            queries.addEmployeeToOffice(dbconnect, adder1);
+            queries.addOfficeToCompany(dbconnect, adder2);
+          }
+        });
+      }
+    });
+  });
+  res.send("Employee added to office");
 });
 
 router.post('/AddOffice',function(req, res, next) {
@@ -372,9 +595,74 @@ router.post('/AddOffice',function(req, res, next) {
       officeState: data.officeState,
       officeZipcode: data.officeZipcode
     };
-    queries.addOffice(dbconnect, office);
+    var companyID = data.companyID;
+    var officeID = 1;
+    var adder;
+
+    queries.addOffice(dbconnect, office, function(err) {
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else {
+        queries.getMostRecentOffice(dbconnect, function(err, results) {
+          if (err && env.logErrors) {
+            console.log("ERROR : ", err);
+          } else {
+            officeID = results[0].officeID;
+            adder = {
+              IDforOffice : officeID,
+              IDforCompany : companyID
+            };
+            queries.addOfficeToCompany(dbconnect, adder);
+          }
+        });
+      }
+    });
   });
   res.send("Office added.");
+});
+
+router.post('/AddOfficeEmployee',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  bcrypt.genSalt(10, function(err, salt) {
+    bcrypt.hash(data.password, salt, function(err, hash) {
+      req.getConnection(function(err, connection) {
+        var employee = {
+          firstName : data.firstName,
+          lastName : data.lastName,
+          email : data.email,
+          password : hash,
+          department : data.department,
+          title : data.title,
+          restroomUsage : data.restroomUsage,
+          noisePreference : data.noisePreference,
+          outOfDesk : data.outOfDesk,
+          pictureAddress : data.pictureAddress,
+          permissionLevel : data.permissionLevel
+        };
+        var officeID = data.officeID;
+        queries.addEmployee(dbconnect, employee, function (err) {
+          if (err) {
+            return res.json({error: err});
+          } else {
+            queries.getUser(dbconnect, {email: data.email}, function(err, results) {
+              if (err && env.logErrors) {
+                console.log("ERROR : ", err);
+              } else {
+                var employeeID = results[0].employeeID;
+                var adder = {
+                  employeeKey: employeeID,
+                  officeKey : officeID
+                };
+                queries.addEmployeeToOffice(dbconnect, adder);
+              }
+            });
+          }
+        });
+      });
+    });
+  });
+  res.send("Employee added to Office.");
 });
 
 router.post('/AddTeammatesToEmployee',function(req, res, next) {
@@ -394,6 +682,19 @@ router.post('/AddTeammatesToEmployee',function(req, res, next) {
   res.send("Teammates added to an employee.");
 });
 
+router.post('/AddTemperatureRange',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+
+  req.getConnection(function(err, connection) {
+    var temperatureRange = {
+      lower : data.lower,
+      upper : data.upper
+    };
+    queries.addRange(dbconnect, temperatureRange);
+  });
+  res.send("Temperature range added.");
+});
+
 router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
 
@@ -407,35 +708,115 @@ router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
   res.send("Temperature range added to an employee.");
 });
 
-
 //Routing for the Delete queries
 router.get('/DeleteCompany/:id', function(req, res) {
   var ID = req.params.id;
-  queries.deleteCompany(dbconnect, ID);
+
+  queries.getAllOfficesForOneCompany(dbconnect, ID, function(err, data) {
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Deleting Company: ", ID);
+      for (var item in data) {
+        queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
+          if (err && env.logErrors) {
+            console.log("ERROR : ", err);
+          } else if (env.logQueries) {
+            console.log("Delete office: ", data[item].officeID);
+            for (var i in result) {
+              if (result[i].permissionLevel != 'superadmin') {
+                queries.deleteEmployee(dbconnect, result[i].employeeID);
+              }
+            }
+            queries.deleteOffice(dbconnect, ID);
+          } else {
+            for (var i in result) {
+              if (result[i].permissionLevel != 'superadmin') {
+                queries.deleteEmployee(dbconnect, result[i].employeeID);
+              }
+            }
+            queries.deleteOffice(dbconnect, ID);
+          }
+        });
+      }
+      queries.deleteCompany(dbconnect, ID);
+    } else {
+      for (var item in data) {
+        queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
+          if (err && env.logErrors) {
+            console.log("ERROR : ", err);
+          } else if (env.logQueries) {
+            console.log("Delete office: ", data[item].officeID);
+            for (var i in result) {
+              if (result[i].permissionLevel != 'superadmin') {
+                queries.deleteEmployee(dbconnect, result[i].employeeID);
+              }
+            }
+            queries.deleteOffice(dbconnect, ID);
+          } else {
+            for (var i in result) {
+              if (result[i].permissionLevel != 'superadmin') {
+                queries.deleteEmployee(dbconnect, result[i].employeeID);
+              }
+            }
+            queries.deleteOffice(dbconnect, ID);
+          }
+        });
+      }
+      queries.deleteCompany(dbconnect, ID);
+    }
+  });
   res.send("Company deleted.");
 });
 
 router.get('/DeleteEmployee/:id', function(req, res) {
   var ID = req.params.id;
+
   queries.deleteEmployee(dbconnect, ID);
   res.send("Employee deleted.");
 });
 
 router.get('/DeleteOffice/:id', function(req, res) {
   var ID = req.params.id;
-  queries.deleteOffice(dbconnect, ID);
+
+  queries.getAllEmployeesForOneOfficeConfidential(dbconnect, ID, function(err, data) {
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Delete office: ", ID);
+      for (var item in data) {
+        if (data[item].permissionLevel != 'superadmin') {
+          queries.deleteEmployee(dbconnect, data[item].employeeID);
+        }
+      }
+      queries.deleteOffice(dbconnect, ID);
+    } else {
+      for (var item in data) {
+        if (data[item].permissionLevel != 'superadmin') {
+          queries.deleteEmployee(dbconnect, data[item].employeeID);
+        }
+      }
+      queries.deleteOffice(dbconnect, ID);
+    }
+  });
   res.send("Office deleted.");
 });
 
-router.get('/deleteEntireBlackListForEmployee/:id', function(req, res) {
+router.get('/DeleteEntireBlackListForEmployee/:id', function(req, res) {
   var ID = req.params.id;
   queries.deleteEntireBlackListForEmploye(dbconnect, ID);
   res.send("Blacklist for employee %d deleted.", ID);
 });
 
-router.get('/deleteEntireWhiteListForEmployee/:id', function(req, res) {
+router.get('/DeleteEntireWhiteListForEmployee/:id', function(req, res) {
   var ID = req.params.id;
   queries.deleteEntireWhiteListForEmploye(dbconnect, ID);
+  res.send("Whitelist for employee %d deleted.", ID);
+});
+
+router.get('/DeleteTemperatureRange/:id', function(req, res) {
+  var ID = req.params.id;
+  queries.deleteRange(dbconnect, ID);
   res.send("Whitelist for employee %d deleted.", ID);
 });
 
@@ -443,16 +824,29 @@ router.get('/deleteEntireWhiteListForEmployee/:id', function(req, res) {
 router.post('/EditCompany/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
-
-  req.getConnection(function(err, connection) {
-    var company = {
-      companyName : data.companyName
-    };
-    queries.editCompany(dbconnect, company, ID);
-  });
-  res.send("Company edited");
+  if(isNaN(ID)){
+     res.status(400).json(apiResponse.errors(true, "not a valid id"));
+  }
+  else{
+    if(data){
+      if(data.company){
+        req.getConnection(function(err, connection) {
+          var company = {
+            companyName : data.companyName
+          };
+          queries.editCompany(dbconnect, company, ID);
+        });
+        res.status(200).json(apiResponse.created("Company edited"));
+      }
+      else{
+          res.status(400).json(apiResponse.errors(true, "missing company name"));
+      }
+    }
+    else{
+      res.status(400).json(apiResponse.errors(true, "missing company name"));
+    }
+  }
 });
-
 router.post('/UpdateCoworkers/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
@@ -476,7 +870,6 @@ router.post('/UpdateCoworkers/:id', function(req, res) {
 router.post('/EditEmployee/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
-
   bcrypt.genSalt(10, function(err, salt) {
     bcrypt.hash(data.password, salt, function(err, hash) {
       req.getConnection(function(err, connection) {
@@ -491,13 +884,28 @@ router.post('/EditEmployee/:id', function(req, res) {
           noisePreference : data.noisePreference,
           outOfDesk : data.outOfDesk,
           pictureAddress : data.pictureAddress,
-          permissionLevel : data.permissionLevel
+          permissionLevel : data.permissionLevel,
+          haveUpdated : 1,
+          accountUpdated: moment().format('YYYY-MM-DD hh:mm:ss')
         };
         queries.editEmployee(dbconnect, employee, ID);
       });
     });
   });
   res.send("Employee edited");
+});
+
+router.post('/EditEmployeeUpdatedForOffice/:id',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+
+  req.getConnection(function(err, connection) {
+    var office = {
+      employeeUpdated: data.employeeUpdated
+    };
+    queries.editEmployeeUpdatedForOffice(dbconnect, office, ID);
+  });
+  res.send("Office Employee Updated edited");
 });
 
 router.post('/EditOffice/:id',function(req, res, next) {
@@ -516,7 +924,21 @@ router.post('/EditOffice/:id',function(req, res, next) {
     };
     queries.editOffice(dbconnect, office, ID);
   });
-  res.send("Ofice edited");
+  res.send("Office edited");
+});
+
+router.post('/EditTemperatureRange/:id',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+
+  req.getConnection(function(err, connection) {
+    var temperatureRange = {
+      lower : data.lower,
+      upper : data.upper
+    };
+    queries.editRange(dbconnect, temperatureRange, ID);
+  });
+  res.send("Temperature Range edited");
 });
 
 // Routing for the Get queries
@@ -767,6 +1189,19 @@ router.get('/Company/:id',function(req, res, next) {
   });
 });
 
+router.get('/CompanyOffices/:id',function(req, res, next) {
+  queries.getAllOfficesForOneCompany(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Company #" + req.params.id + " offices: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/CompanyForOffice/:id',function(req, res, next) {
   queries.getCompanyForOneOffice(dbconnect, req.params.id, function(err, data){
     if (err && env.logErrors) {
@@ -936,12 +1371,38 @@ router.get('/EmployeeTeammatesConfidential/:id',function(req, res, next) {
   });
 });
 
+router.get('/EmployeesNotInTeammates/:employeeID/:officeID',function(req, res, next) {
+  queries.getAllEmployeesNotInTeammatesForOffice(dbconnect, req.params.employeeID, req.params.officeID, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("All employees not in teammates of #" + req.params.emloyeeID + ": ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/EmployeeTemperatureRange/:id',function(req, res, next) {
   queries.getTempRangeOfOneEmployee(dbconnect, req.params.id, function(err, data){
     if (err && env.logErrors) {
       console.log("ERROR : ", err);
     } else if (env.logQueries) {
       console.log("Employee #'" + req.params.id + "'s temperature range: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/EmployeesUpdatedForOffice/:id',function(req, res, next) {
+  queries.getEmployeeUpdatedForOffice(dbconnect, req.params.id, function(err, data){
+    if (err && env.logErrors) {
+      console.log("ERROR : ", err);
+    } else if (env.logQueries) {
+      console.log("Office " + req.params.id + "'s employee updated: " , data);
       res.json(data);
     } else {
       res.json(data);
@@ -1078,5 +1539,207 @@ router.get('/User/:id',function(req, res, next) {
     }
   });
 });
+
+router.post('/UpdatePassword',function(req, res) {
+  var passwords = JSON.parse(JSON.stringify(req.body));
+
+  queries.getOneEmployeeConfidential(dbconnect, passwords.employeeID, function(err, data){
+    var query = JSON.parse(JSON.stringify(data));
+    if (err) {
+      return res.json({error: err});
+    }
+    else {
+      bcrypt.genSalt(10, function(err, salt) {
+        if(bcrypt.compareSync(passwords.oldPassword, query[0].password)){
+          if(passwords.password===passwords.password2){
+            bcrypt.genSalt(10, function(err, salt) {
+              bcrypt.hash(passwords.password, salt, function(err, hash) {
+                var employee = {
+                  firstName : query[0].firstName,
+                  lastName : query[0].lastName,
+                  email : query[0].email,
+                  password : hash,
+                  department : query[0].department,
+                  title : query[0].title,
+                  restroomUsage : query[0].restroomUsage,
+                  noisePreference : query[0].noisePreference,
+                  outOfDesk : query[0].outOfDesk,
+                  pictureAddress : query[0].pictureAddress,
+                  permissionLevel : query[0].permissionLevel
+                };
+                queries.editEmployee(dbconnect, employee, passwords.employeeID);
+                res.send("Password Updated.");
+              });
+            });
+          }
+          else{
+            res.json({ success: false, message: 'New passwords do not match.' });
+          }
+        }
+        else{
+          res.json({ success: false, message: 'Invalid Old Password.' });
+        }
+      });
+    }
+  });
+});
+
+router.post('/PasswordReset', function(req, res){
+
+  var user = JSON.parse(JSON.stringify(req.body));
+  var newPassword = Math.round((Math.pow(36, 8) - Math.random() * Math.pow(36, 7))).toString(36).slice(1);
+  // Require
+  var postmark = require("postmark");
+
+
+  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+
+  queries.getUser(dbconnect, user, function(err, data){
+    console.log(data);
+    if(data.length>0){
+      //user was found, time to encrypt the password
+      var salt = bcrypt.genSaltSync(10);
+      //var hash = bcrypt.hashSync(values[data].password, salt);
+      hash = bcrypt.hashSync(newPassword, salt);
+      //update the user's password
+      queries.getOneEmployeeConfidential(dbconnect, data[0].employeeID, function(err, data){
+        var query = JSON.parse(JSON.stringify(data));
+        console.log(data);
+        var employee = {
+          firstName : query[0].firstName,
+          lastName : query[0].lastName,
+          email : query[0].email,
+          password : hash,
+          department : query[0].department,
+          title : query[0].title,
+          restroomUsage : query[0].restroomUsage,
+          noisePreference : query[0].noisePreference,
+          outOfDesk : query[0].outOfDesk,
+          pictureAddress : query[0].pictureAddress,
+          permissionLevel : query[0].permissionLevel
+        };
+
+        queries.editEmployee(dbconnect, employee, query[0].employeeID);
+      });
+      //now send the email to the user
+      client.sendEmail({
+          "From": "djgraca@asu.edu",
+          "To": user.email,
+          "Subject": 'You have requested a Password Reset',
+          "TextBody": "Please use this temporary password to login: "+newPassword
+      });
+      res.send("Password Reset");
+    }
+    else{
+      console.log("4");
+      res.json({ success: false, message: 'No such user.' });
+    }
+  });
+});
+
+
+/******E-Mail API*****/
+router.post('/SendEmail',function(req, res, next) {
+  var emailData = JSON.parse(JSON.stringify(req.body));
+  //Admin Reasons: Password update, password reset request, employee preferences changed (daily)
+  //User Reasons: When added to update profile, then 5 days later remind them, after that every 10 days, then suggest update every 92 days
+
+  // Require
+  var postmark = require("postmark");
+
+  // Example request
+  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+
+  if(emailData.reason ==='passwordUpdate'){
+
+    queries.emailSuperAdmins(dbconnect, function(err, data){
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else if (env.logQueries) {
+        console.log("The list of employees : ", data);
+        email=data;
+      } else {
+        admin=JSON.parse(JSON.stringify(data));
+
+        for (var i in admin) {
+
+          val = admin[i];
+          client.sendEmail({
+            "From": "djgraca@asu.edu",
+            "To": val.email,
+            "Subject": 'Someone has Updated their Password',
+            "TextBody": emailData.email+" has updated their password."
+          });
+        }
+      }
+    });
+  }
+  else if(emailData.reason ==='passwordReset'){
+
+    queries.emailSuperAdmins(dbconnect, function(err, data){
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else if (env.logQueries) {
+        console.log("The list of employees : ", data);
+        email=data;
+      } else {
+        admin=JSON.parse(JSON.stringify(data));
+
+        for (var i in admin) {
+
+          val = admin[i];
+          client.sendEmail({
+            "From": "djgraca@asu.edu",
+            "To": val.email,
+            "Subject": 'Someone has Requested a Password Reset',
+            "TextBody": emailData.email+" has requested a password reset and has been given a temporary password."
+          });
+        }
+      }
+    });
+  }
+  else if(emailData.reason ==='employeeUpdate'){
+    queries.emailSuperAdmins(dbconnect, function(err, data){
+      if (err && env.logErrors) {
+        console.log("ERROR : ", err);
+      } else if (env.logQueries) {
+        console.log("The list of employees : ", data);
+        email=data;
+      } else {
+        admin=JSON.parse(JSON.stringify(data));
+
+        for (var i in admin) {
+
+          val = admin[i];
+          console.log(val.email);
+          client.sendEmail({
+            "From": "djgraca@asu.edu",
+            "To": val.email,
+            "Subject": 'Seating Chart Update Recommended',
+            "TextBody": "Employee(s) have updated their preferences and the Seating Chart recommendation may have changed."
+          });
+        }
+
+
+      }
+    });
+
+  }
+  else if(emailData.reason ==='employeeAdd'){
+    console.log("got here");
+    console.log(emailData.to);
+    client.sendEmail({
+        "From": "djgraca@asu.edu",
+        "To": emailData.to,
+        "Subject": 'Welcome to DeskSeeker!',
+        "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password
+    });
+  }
+  console.log("finished");
+res.send("Email sent");
+});
+
+
+
 
 module.exports = router;
