@@ -13,6 +13,20 @@ var queries = require('../database/queries');
 var router = express.Router();
 var uuid = require('node-uuid');
 
+/**************** Utility Functions ****************/
+function isInt(value) {
+  return !isNaN(value) &&
+         parseInt(Number(value)) == value &&
+         !isNaN(parseInt(value, 10));
+}
+
+function employeePropertiesToArray(employee) {
+  return Object.keys(employee).map(function(k) {
+     return employee[k];
+   }
+ );
+};
+
 /**************** Database Connection ****************/
 var dbconnect = queries.getInitialConnection();
 dbconnect.connect(function(err) {
@@ -94,9 +108,12 @@ router.get('/Media/ProfileImage/:id', function (req, res, next) {
   var employeeID = req.params.id;
   var address;
 
+  if (!isInt(employeeID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getEmployeeProfileImage(dbconnect, employeeID, function(err, result) {
     if (err) {
-      res.json(apiError.errors("503","Error with get employee profile image query in database"));
+      res.json(apiError.errors("500","Error with get employee profile image query in database"));
     } else {
       address = result[0].pictureAddress;
       address = path.join(__dirname+"./../public/documents/" + address);
@@ -107,19 +124,12 @@ router.get('/Media/ProfileImage/:id', function (req, res, next) {
 
 });
 
-function employeePropertiesToArray(employee) {
-  return Object.keys(employee).map(function(k) {
-     return employee[k];
-   }
- );
-};
-
 router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
   var file = req.file;
   var rs = fs.createReadStream(file.path);
   parser = csvParser({columns: true}, function(err, employees) {
     if (err) {
-      res.json(apiError.errors("401","Error with parsing JSON"));
+      res.json(apiError.errors("400","Error with parsing JSON"));
     } else {
       var values=[];
       for( var i in employees) {
@@ -148,12 +158,12 @@ router.post('/Authenticate', function(req, res) {
   try {
      employee = JSON.parse(JSON.stringify(req.body));
   } catch (e) {
-    res.json(apiError.errors("401","Error parsing JSON"));
+    return res.json(apiError.errors("400","Error parsing JSON"));
   }
   u = employee.email;
   p = employee.password;
   if ( u === undefined || u === null || p === undefined || p === null) {
-    res.json(apiError.errors("401", "Missing parameters"));
+    res.json(apiError.errors("400", "Missing parameters"));
   } else {
     queries.getUser(dbconnect, employee, function(err, rows) {
       if (!err) {
@@ -243,7 +253,7 @@ router.get('/Authenticate', function(req, res) {
 router.get('/ExistsCompany',function(req, res, next) {
   queries.existsCompany(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Is there a company? 0 means no and 1 means yes: " , data);
       res.json(data);
@@ -256,7 +266,7 @@ router.get('/ExistsCompany',function(req, res, next) {
 router.get('/ExistsOffice',function(req, res, next) {
   queries.existsOffice(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Is there an office? 0 means no and 1 means yes: " , data);
       res.json(data);
@@ -269,7 +279,7 @@ router.get('/ExistsOffice',function(req, res, next) {
 router.get('/ExistsSuperadminWithOffice',function(req, res, next) {
   queries.existsSuperadminWithOffice(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Is there a superadmin associated with an office? 0 means no and 1 means yes: " , data);
       res.json(data);
@@ -282,7 +292,7 @@ router.get('/ExistsSuperadminWithOffice',function(req, res, next) {
 router.get('/ExistsTemperatureRange',function(req, res, next) {
   queries.existsTemperatureRange(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Is there a temperature range? 0 means no and 1 means yes: " , data);
       res.json(data);
@@ -304,7 +314,7 @@ router.post('/AddCompany',function(req, res, next) {
 
   req.getConnection(function(err, connection) {
     if (err) {
-      return res.json(apiError.queryError("503", err.toString(), data));
+      return res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var company = {
         companyName : data.companyName
@@ -321,7 +331,7 @@ router.post('/AddCluster',function(req, res, next) {
 
   req.getConnection(function(err, connection) {
     if (err) {
-      return res.json(apiError.queryError("503", err.toString(), data));
+      return res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var cluster = {
         xcoordinate : data.xcoordinate,
@@ -338,7 +348,7 @@ router.post('/AddDesk',function(req, res, next) {
 
   req.getConnection(function(err, connection) {
     if (err) {
-      return res.json(apiError.queryError("503", err.toString(), data));
+      return res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var desk = {
         xcoordinate : data.xcoordinate,
@@ -379,11 +389,11 @@ router.post('/AddEmployee',function(req, res, next) {
         };
         queries.addEmployee(dbconnect, employee, function (err) {
           if (err) {
-            return res.json(apiError.queryError("503", err.toString(), data));
+            return res.json(apiError.queryError("500", err.toString(), data));
           } else {
             queries.getUser(dbconnect, {email: data.email}, function(err, results) {
               if (err) {
-                return res.json(apiError.queryError("503", err.toString(), data));
+                return res.json(apiError.queryError("500", err.toString(), data));
               } else {
                 var employeeID = results[0].employeeID;
 
@@ -445,7 +455,7 @@ router.post('/AddEmployeeToOffice',function(req, res, next) {
 
   req.getConnection(function(err, connection) {
     if (err) {
-      return res.json(apiError.queryError("503", err.toString(), data));
+      return res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var adder = {
         employeeKey : data.employeeID,
@@ -477,11 +487,11 @@ router.post('/AddInitialOfficeWithEmployee',function(req, res, next) {
   req.getConnection(function(err, connection) {
     queries.addOffice(dbconnect, office, function(err) {
       if (err) {
-        res.json(apiError.queryError("503", err.toString(), data));
+        res.json(apiError.queryError("500", err.toString(), data));
       } else {
         queries.getMostRecentOffice(dbconnect, function(err, results) {
           if (err) {
-            res.json(apiError.queryError("503", err.toString(), data));
+            res.json(apiError.queryError("500", err.toString(), data));
           } else {
             officeID = results[0].officeID;
             adder1 = {
@@ -507,7 +517,7 @@ router.post('/AddOffice',function(req, res, next) {
 
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var office = {
         officeName: data.officeName,
@@ -524,11 +534,11 @@ router.post('/AddOffice',function(req, res, next) {
 
       queries.addOffice(dbconnect, office, function(err) {
         if (err) {
-          res.json(apiError.queryError("503", err.toString(), data));
+          res.json(apiError.queryError("500", err.toString(), data));
         } else {
           queries.getMostRecentOffice(dbconnect, function(err, results) {
             if (err) {
-              res.json(apiError.queryError("503", err.toString(), data));
+              res.json(apiError.queryError("500", err.toString(), data));
             } else {
               officeID = results[0].officeID;
               adder = {
@@ -567,11 +577,11 @@ router.post('/AddOfficeEmployee',function(req, res, next) {
         var officeID = data.officeID;
         queries.addEmployee(dbconnect, employee, function (err) {
           if (err) {
-            res.json(apiError.queryError("503", err.toString(), data));
+            res.json(apiError.queryError("500", err.toString(), data));
           } else {
             queries.getUser(dbconnect, {email: data.email}, function(err, results) {
               if (err) {
-                res.json(apiError.queryError("503", err.toString(), data));
+                res.json(apiError.queryError("500", err.toString(), data));
               } else {
                 var employeeID = results[0].employeeID;
                 var adder = {
@@ -589,12 +599,32 @@ router.post('/AddOfficeEmployee',function(req, res, next) {
 res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
 });
 
+router.post('/AddPasswordReset',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var adder = {
+    token: data.token,
+    employee_ID : data.employeeID
+  };
+  req.getConnection(function(err, connection) {
+    if (err) {
+      return res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      queries.addPasswordReset(dbconnect, adder, function (err) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        }
+      });
+    }
+  });
+  res.json(apiSuccess.successQuery(true, "Temporary reset password added to office in seating_lucid_agency"));
+});
+
 router.post('/AddTeammatesToEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
 
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var adder = [];
       var employeeID = data.employeeID;
@@ -615,7 +645,7 @@ router.post('/AddTemperatureRange',function(req, res, next) {
 
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var temperatureRange = {
         lower : data.lower,
@@ -632,7 +662,7 @@ router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
 
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var adder = {
         employeeID : data.employeeID,
@@ -648,15 +678,18 @@ router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
 router.get('/DeleteCompany/:id', function(req, res) {
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllOfficesForOneCompany(dbconnect, ID, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Deleting Company: ", ID);
       for (var item in data) {
         queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
           if (err) {
-            res.json(apiError.queryError("503", err.toString(), data));
+            res.json(apiError.queryError("500", err.toString(), data));
           } else if (env.logQueries) {
             console.log("Delete office: ", data[item].officeID);
             for (var i in result) {
@@ -680,7 +713,7 @@ router.get('/DeleteCompany/:id', function(req, res) {
       for (var item in data) {
         queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
           if (err) {
-            res.json(apiError.queryError("503", err.toString(), data));
+            res.json(apiError.queryError("500", err.toString(), data));
           } else if (env.logQueries) {
             for (var i in result) {
               if (result[i].permissionLevel != 'superadmin') {
@@ -707,6 +740,9 @@ router.get('/DeleteCompany/:id', function(req, res) {
 router.get('/DeleteEmployee/:id', function(req, res) {
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.deleteEmployee(dbconnect, ID);
   res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
 });
@@ -714,9 +750,12 @@ router.get('/DeleteEmployee/:id', function(req, res) {
 router.get('/DeleteOffice/:id', function(req, res) {
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllEmployeesForOneOfficeConfidential(dbconnect, ID, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Delete office: ", ID);
       for (var item in data) {
@@ -737,9 +776,32 @@ router.get('/DeleteOffice/:id', function(req, res) {
   res.json(apiSuccess.successQuery(true, "Office deleted in seating_lucid_agency"));
 });
 
+router.get('/DeletePasswordReset/:id', function(req, res) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.deletePasswordReset(dbconnect, ID);
+  res.json(apiSuccess.successQuery(true, "Temporary reset password deleted in seating_lucid_agency"));
+});
+
+router.get('/DeletePasswordResetForEmployee/:employeeID', function(req, res) {
+  var ID = req.params.employeeID;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.deletePasswordResetForEmployee(dbconnect, ID);
+  res.json(apiSuccess.successQuery(true, "Temporary reset password deleted in seating_lucid_agency"));
+});
+
 router.get('/DeleteEntireBlackListForEmployee/:id', function(req, res) {
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.deleteEntireBlackListForEmploye(dbconnect, ID);
   res.json(apiSuccess.successQuery(true, "Blacklist deleted in seating_lucid_agency for employee " + ID));
 });
@@ -747,6 +809,9 @@ router.get('/DeleteEntireBlackListForEmployee/:id', function(req, res) {
 router.get('/DeleteEntireWhiteListForEmployee/:id', function(req, res) {
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.deleteEntireWhiteListForEmploye(dbconnect, ID);
   res.json(apiSuccess.successQuery(true, "Whitelist deleted in seating_lucid_agency for employee " + ID));
 });
@@ -754,6 +819,9 @@ router.get('/DeleteEntireWhiteListForEmployee/:id', function(req, res) {
 router.get('/DeleteTemperatureRange/:id', function(req, res) {
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.deleteRange(dbconnect, ID);
   res.json(apiSuccess.successQuery(true, "Temperature Range deleted in seating_lucid_agency"));
 });
@@ -763,9 +831,12 @@ router.post('/EditCompany/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var company = {
         companyName : data.companyName
@@ -783,9 +854,12 @@ router.post('/UpdateCoworkers/:id', function(req, res) {
   var blacklist = data.blacklist;
   var employee = null;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       queries.deleteEntireBlackListForEmployee(dbconnect, ID);
       queries.deleteEntireWhiteListForEmployee(dbconnect, ID);
@@ -803,11 +877,15 @@ router.post('/UpdateCoworkers/:id', function(req, res) {
 router.post('/EditEmployee/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   bcrypt.genSalt(10, function(err, salt) {
     bcrypt.hash(data.password, salt, function(err, hash) {
       req.getConnection(function(err, connection) {
         if (err) {
-          res.json(apiError.queryError("503", err.toString(), data));
+          res.json(apiError.queryError("500", err.toString(), data));
         } else {
           var employee = {
             firstName : data.firstName,
@@ -836,9 +914,12 @@ router.post('/EditEmployeeUpdatedForOffice/:id',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var office = {
         employeeUpdated: data.employeeUpdated
@@ -853,9 +934,12 @@ router.post('/EditOffice/:id',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var office = {
         officeName: data.officeName,
@@ -872,6 +956,50 @@ router.post('/EditOffice/:id',function(req, res, next) {
   res.json(apiSuccess.successQuery(true, "Office edited in seating_lucid_agency"));
 });
 
+router.post('/EditPasswordReset/:id', function(req, res) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+  var adder = {
+    token: data.token,
+    time_created: moment().format('YYYY-MM-DD hh:mm:ss'),
+    employee_ID: data.employee_ID
+  };
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  req.getConnection(function(err, connection) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      queries.editPasswordReset(dbconnect, adder, ID);
+    }
+  });
+  res.json(apiSuccess.successQuery(true, "Temporary reset password edited in seating_lucid_agency"));
+});
+
+router.post('/EditPasswordResetForEmployee/:id', function(req, res) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+  var adder = {
+    token: data.token,
+    time_created: moment().format('YYYY-MM-DD hh:mm:ss'),
+    employee_ID: data.employee_ID
+  };
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  req.getConnection(function(err, connection) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      queries.editPasswordResetForEmployee(dbconnect, adder, ID);
+    }
+  });
+  res.json(apiSuccess.successQuery(true, "Temporary reset password edited in seating_lucid_agency"));
+});
+
 router.post('/EditEmployeePreferences/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
@@ -884,9 +1012,12 @@ router.post('/EditEmployeePreferences/:id', function(req, res) {
     accountUpdated: moment().format('YYYY-MM-DD hh:mm:ss')
   };
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       queries.editEmployee(dbconnect, employee, ID);
       queries.editRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID}, ID);
@@ -901,9 +1032,12 @@ router.post('/EditEmployeeTeammates/:id', function(req, res) {
   var teammates = data.teammates;
   var employee = null;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       queries.deleteAllTeammatesForEmployee(dbconnect, ID);
       for (employee in teammates) {
@@ -919,9 +1053,12 @@ router.post('/EditTemperatureRange/:id',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
 
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var temperatureRange = {
         lower : data.lower,
@@ -937,7 +1074,7 @@ router.post('/EditTemperatureRange/:id',function(req, res, next) {
 router.get('/AllBlacklistEmployees',function(req, res, next) {
   queries.getAllBlacklistEmployees(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of employees and their blacklists : ", data);
       res.json(data);
@@ -950,7 +1087,7 @@ router.get('/AllBlacklistEmployees',function(req, res, next) {
 router.get('/AllCompanies',function(req, res, next) {
   queries.getAllCompanies(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of companies : ", data);
       res.json(data);
@@ -963,7 +1100,7 @@ router.get('/AllCompanies',function(req, res, next) {
 router.get('/AllCompaniesForAllOffices',function(req, res, next) {
   queries.getCompaniesForAllOffices(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of companies : ", data);
       res.json(data);
@@ -976,7 +1113,7 @@ router.get('/AllCompaniesForAllOffices',function(req, res, next) {
 router.get('/AllClusters',function(req, res, next) {
   queries.getAllClusters(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of clusters : ", data);
       res.json(data);
@@ -989,7 +1126,7 @@ router.get('/AllClusters',function(req, res, next) {
 router.get('/AllClustersOfFloorplans',function(req, res, next) {
   queries.getAllClustersOfFloorplans(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of clusters of the floor plans : ", data);
       res.json(data);
@@ -1002,7 +1139,7 @@ router.get('/AllClustersOfFloorplans',function(req, res, next) {
 router.get('/AllDesks',function(req, res, next) {
   queries.getAllDesks(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of desks : ", data);
       res.json(data);
@@ -1015,7 +1152,7 @@ router.get('/AllDesks',function(req, res, next) {
 router.get('/AllDesksWithEmployees',function(req, res, next) {
   queries.getAllDesksWithEmployees(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of desks with employees : ", data);
       res.json(data);
@@ -1028,7 +1165,7 @@ router.get('/AllDesksWithEmployees',function(req, res, next) {
 router.get('/AllEmployees',function(req, res, next) {
   queries.getAllEmployees(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of employees : ", data);
       res.json(data);
@@ -1041,7 +1178,7 @@ router.get('/AllEmployees',function(req, res, next) {
 router.get('/AllEmployeesConfidential',function(req, res, next) {
   queries.getAllEmployeesConfidential(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of employees : ", data);
       res.json(data);
@@ -1054,7 +1191,7 @@ router.get('/AllEmployeesConfidential',function(req, res, next) {
 router.get('/AllFloorPlans',function(req, res, next) {
   queries.getAllFloorPlans(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of floor plans : ", data);
       res.json(data);
@@ -1067,7 +1204,7 @@ router.get('/AllFloorPlans',function(req, res, next) {
 router.get('/AllOffices',function(req, res, next) {
   queries.getAllOffices(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of offices : ", data);
       res.json(data);
@@ -1078,9 +1215,12 @@ router.get('/AllOffices',function(req, res, next) {
 });
 
 router.get('/AllEmployeesExcept/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllEmployeesExceptOne(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of employees except " + req.params.id + " : ", data);
       res.json(data);
@@ -1093,7 +1233,7 @@ router.get('/AllEmployeesExcept/:id',function(req, res, next) {
 router.get('/AllTeammates',function(req, res, next) {
   queries.getAllTeammates(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of employees with their teammates : ", data);
       res.json(data);
@@ -1106,7 +1246,7 @@ router.get('/AllTeammates',function(req, res, next) {
 router.get('/AllTempRanges',function(req, res, next) {
   queries.getAllTempRanges(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("List of Temperature Ranges: " , data);
       res.json(data);
@@ -1119,7 +1259,7 @@ router.get('/AllTempRanges',function(req, res, next) {
 router.get('/AllTempRangesOfClusters',function(req, res, next) {
   queries.getAllTempRangesOfClusters(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of temperature ranges of each cluster : ", data);
       res.json(data);
@@ -1132,7 +1272,7 @@ router.get('/AllTempRangesOfClusters',function(req, res, next) {
 router.get('/AllTempRangesOfEmployees',function(req, res, next) {
   queries.getAllTempRangesOfEmployees(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of temperature ranges of each employee : ", data);
       res.json(data);
@@ -1145,7 +1285,7 @@ router.get('/AllTempRangesOfEmployees',function(req, res, next) {
 router.get('/AllTempRangesOfFloorplans',function(req, res, next) {
   queries.getAllTempRangesOfFloorplans(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of temperature ranges of each floor plan : ", data);
       res.json(data);
@@ -1158,7 +1298,7 @@ router.get('/AllTempRangesOfFloorplans',function(req, res, next) {
 router.get('/AllWhitelistEmployees',function(req, res, next) {
   queries.getAllWhitelistEmployees(dbconnect, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("The list of employees and their whitelists : ", data);
       res.json(data);
@@ -1169,9 +1309,12 @@ router.get('/AllWhitelistEmployees',function(req, res, next) {
 });
 
 router.get('/Company/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getOneCompany(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Company #" + req.params.id + ": " , data);
       res.json(data);
@@ -1182,9 +1325,12 @@ router.get('/Company/:id',function(req, res, next) {
 });
 
 router.get('/CompanyOffices/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllOfficesForOneCompany(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Company #" + req.params.id + " offices: " , data);
       res.json(data);
@@ -1195,9 +1341,12 @@ router.get('/CompanyOffices/:id',function(req, res, next) {
 });
 
 router.get('/CompanyForOffice/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getCompanyForOneOffice(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Office #" + req.params.id + ": " , data);
       res.json(data);
@@ -1208,9 +1357,12 @@ router.get('/CompanyForOffice/:id',function(req, res, next) {
 });
 
 router.get('/Cluster/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getOneCluster(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Cluster #" + req.params.id + ": " , data);
       res.json(data);
@@ -1221,9 +1373,12 @@ router.get('/Cluster/:id',function(req, res, next) {
 });
 
 router.get('/ClusterDesks/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllDesksForOneCluster(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Cluster #" + req.params.id + "'s desks: " , data);
       res.json(data);
@@ -1234,9 +1389,12 @@ router.get('/ClusterDesks/:id',function(req, res, next) {
 });
 
 router.get('/ClusterTemperatureRange/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getTempRangeOfOneCluster(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Cluster #" + req.params.id + "'s temperature range: " , data);
       res.json(data);
@@ -1247,9 +1405,12 @@ router.get('/ClusterTemperatureRange/:id',function(req, res, next) {
 });
 
 router.get('/Desk/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getOneDesk(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Desk #" + req.params.id + ": " , data);
       res.json(data);
@@ -1260,9 +1421,12 @@ router.get('/Desk/:id',function(req, res, next) {
 });
 
 router.get('/Employee/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getOneEmployee(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #" + req.params.id + ": " , data);
       res.json(data);
@@ -1273,9 +1437,12 @@ router.get('/Employee/:id',function(req, res, next) {
 });
 
 router.get('/EmployeeConfidential/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getOneEmployeeConfidential(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #" + req.params.id + ": " , data);
       res.json(data);
@@ -1286,9 +1453,12 @@ router.get('/EmployeeConfidential/:id',function(req, res, next) {
 });
 
 router.get('/EmployeeBlackList/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllBlacklistEmployeesForOneEmployee(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #'" + req.params.id + "'s blacklist: " , data);
       res.json(data);
@@ -1299,9 +1469,12 @@ router.get('/EmployeeBlackList/:id',function(req, res, next) {
 });
 
 router.get('/EmployeeBlackListConfidential/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllBlacklistEmployeesForOneEmployeeConfidential(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #'" + req.params.id + "'s blacklist: " , data);
       res.json(data);
@@ -1312,9 +1485,12 @@ router.get('/EmployeeBlackListConfidential/:id',function(req, res, next) {
 });
 
 router.get('/EmployeeDesk/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getDeskOfEmployee(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #'" + req.params.id + "'s desk: " , data);
       res.json(data);
@@ -1327,7 +1503,7 @@ router.get('/EmployeeDesk/:id',function(req, res, next) {
 router.get('/EmployeesOfOffice/:id',function(req, res, next) {
   queries.getAllEmployeesForOneOffice(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Office " + req.params.id + "'s employees: " , data);
       res.json(data);
@@ -1338,9 +1514,12 @@ router.get('/EmployeesOfOffice/:id',function(req, res, next) {
 });
 
 router.get('/EmployeeTeammates/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllTeammatesForOneEmployee(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #" + req.params.id + "'s teammates:" , data);
       res.json(data);
@@ -1351,9 +1530,12 @@ router.get('/EmployeeTeammates/:id',function(req, res, next) {
 });
 
 router.get('/EmployeeTeammatesConfidential/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllTeammatesForOneEmployeeConfidential(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #" + req.params.id + "'s teammates:" , data);
       res.json(data);
@@ -1364,9 +1546,12 @@ router.get('/EmployeeTeammatesConfidential/:id',function(req, res, next) {
 });
 
 router.get('/EmployeesNotInTeammates/:employeeID/:officeID',function(req, res, next) {
+  if (!isInt(req.params.employeeID) || !isInt(req.params.officeID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllEmployeesNotInTeammatesForOffice(dbconnect, req.params.employeeID, req.params.officeID, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("All employees not in teammates of #" + req.params.emloyeeID + ": ", data);
       res.json(data);
@@ -1377,9 +1562,12 @@ router.get('/EmployeesNotInTeammates/:employeeID/:officeID',function(req, res, n
 });
 
 router.get('/EmployeeTemperatureRange/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getTempRangeOfOneEmployee(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #'" + req.params.id + "'s temperature range: " , data);
       res.json(data);
@@ -1390,9 +1578,12 @@ router.get('/EmployeeTemperatureRange/:id',function(req, res, next) {
 });
 
 router.get('/EmployeesUpdatedForOffice/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getEmployeeUpdatedForOffice(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Office " + req.params.id + "'s employee updated: " , data);
       res.json(data);
@@ -1403,9 +1594,12 @@ router.get('/EmployeesUpdatedForOffice/:id',function(req, res, next) {
 });
 
 router.get('/EmployeeWhiteList/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllWhitelistEmployeesForOneEmployee(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #" + req.params.id + "'s whitelist: " , data);
       res.json(data);
@@ -1416,9 +1610,12 @@ router.get('/EmployeeWhiteList/:id',function(req, res, next) {
 });
 
 router.get('/EmployeesNotInWhiteListOrBlackList/:employeeID/:officeID',function(req, res, next) {
+  if (!isInt(req.params.employeeID) || !isInt(req.params.officeID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllEmployeesNotInWhiteListOrBlackListForOffice(dbconnect, req.params.employeeID, req.params.officeID, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("All employees not in whitelist or blacklist of #" + req.params.emloyeeID + ": ", data);
       res.json(data);
@@ -1429,9 +1626,12 @@ router.get('/EmployeesNotInWhiteListOrBlackList/:employeeID/:officeID',function(
 });
 
 router.get('/EmployeeWhiteListConfidential/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllWhitelistEmployeesForOneEmployeeConfidential(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Employee #" + req.params.id + "'s whitelist: " , data);
       res.json(data);
@@ -1442,9 +1642,12 @@ router.get('/EmployeeWhiteListConfidential/:id',function(req, res, next) {
 });
 
 router.get('/Floorplan/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getOneFloorPlan(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Floorplan #" + req.params.id +": " , data);
       res.json(data);
@@ -1455,9 +1658,12 @@ router.get('/Floorplan/:id',function(req, res, next) {
 });
 
 router.get('/FloorplanClusters/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getAllClustersOfOneFloorplan(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Floorplan #" + req.params.id + "'s clusters: " , data);
       res.json(data);
@@ -1468,9 +1674,12 @@ router.get('/FloorplanClusters/:id',function(req, res, next) {
 });
 
 router.get('/FloorPlanOfOffice/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getFloorPlanOfOffice(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Floorplan of Office" + req.params.id + ": " , data);
       res.json(data);
@@ -1481,9 +1690,12 @@ router.get('/FloorPlanOfOffice/:id',function(req, res, next) {
 });
 
 router.get('/Office/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getOneOffice(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Office #" + req.params.id +": " , data);
       res.json(data);
@@ -1494,9 +1706,12 @@ router.get('/Office/:id',function(req, res, next) {
 });
 
 router.get('/OfficeOfEmployee/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getOfficeOfEmployee(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Office # for Employee " + req.params.id +": " , data);
       res.json(data);
@@ -1506,10 +1721,45 @@ router.get('/OfficeOfEmployee/:id',function(req, res, next) {
   });
 });
 
+router.get('/PasswordReset/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.getPasswordReset(dbconnect, req.params.id, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Temporary password #" + req.params.id +": " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/PasswordResetForEmployee/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.getPasswordResetForEmployee(dbconnect, req.params.id, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Temporary password for employee #" + req.params.id +": " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/TemperatureRange/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getOneTempRange(dbconnect, req.params.id, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Floorplan #" + req.params.id + "'s clusters: " , data);
       res.json(data);
@@ -1520,9 +1770,12 @@ router.get('/TemperatureRange/:id',function(req, res, next) {
 });
 
 router.get('/User/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   queries.getUser(dbconnect, { email : req.params.id }, function(err, data) {
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("User data: " , data);
       res.json(data);
@@ -1538,7 +1791,7 @@ router.post('/UpdatePassword',function(req, res) {
   queries.getOneEmployeeConfidential(dbconnect, passwords.employeeID, function(err, data) {
     var query = JSON.parse(JSON.stringify(data));
     if (err) {
-      res.json(apiError.queryError("503", err.toString(), data));
+      res.json(apiError.queryError("500", err.toString(), data));
     }
     else {
       bcrypt.genSalt(10, function(err, salt) {
@@ -1635,7 +1888,7 @@ router.post('/SendEmail',function(req, res, next) {
   if (emailData.reason ==='passwordUpdate') {
     queries.emailSuperAdmins(dbconnect, function(err, data) {
       if (err) {
-        res.json(apiError.queryError("503", err.toString(), data));
+        res.json(apiError.queryError("500", err.toString(), data));
       } else if (env.logQueries) {
         //console.log("The list of employees : ", data);
         email=data;
@@ -1655,7 +1908,7 @@ router.post('/SendEmail',function(req, res, next) {
   } else if (emailData.reason ==='passwordReset') {
     queries.emailSuperAdmins(dbconnect, function(err, data) {
       if (err) {
-        res.json(apiError.queryError("503", err.toString(), data));
+        res.json(apiError.queryError("500", err.toString(), data));
       } else if (env.logQueries) {
         //console.log("The list of employees : ", data);
         email=data;
@@ -1675,7 +1928,7 @@ router.post('/SendEmail',function(req, res, next) {
   } else if (emailData.reason ==='employeeUpdate') {
     queries.emailSuperAdmins(dbconnect, function(err, data) {
       if (err) {
-        res.json(apiError.queryError("503", err.toString(), data));
+        res.json(apiError.queryError("500", err.toString(), data));
       } else if (env.logQueries) {
         //console.log("The list of employees : ", data);
         email=data;

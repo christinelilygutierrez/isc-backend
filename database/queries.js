@@ -283,6 +283,20 @@ exports.addOfficeToCompany = function(connection, values) {
   });
 };
 
+exports.addPasswordReset = function(connection, values, callback) {
+  connection.query("INSERT INTO seating_lucid_agency.password_reset SET ?;", values, function(err, result) {
+    if (err) {
+      console.log(err);
+      callback(err);
+    } else if (env.logQueries) {
+      console.log("Temporary password added to the database");
+      callback(null);
+    } else {
+      callback(null);
+    }
+  });
+};
+
 exports.addRange = function(connection, values) {
   connection.query("INSERT INTO seating_lucid_agency.range SET ?;", values, function(err, result) {
     if (err && env.logErrors) {
@@ -558,6 +572,26 @@ exports.deleteOfficeFromCompany = function(connection, officeID, companyID) {
   });
 };
 
+exports.deletePasswordReset = function(connection, resetID) {
+  connection.query("DELETE FROM seating_lucid_agency.password_reset WHERE reset_ID;", resetID, function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Temporary password deleted for %d", resetID);
+    }
+  });
+};
+
+exports.deletePasswordResetForEmployee = function(connection, employeeID) {
+  connection.query("DELETE FROM seating_lucid_agency.password_reset WHERE employee_ID;", employeeID, function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Temporary password deleted for %d", employeeID);
+    }
+  });
+};
+
 exports.deleteRange = function(connection, id) {
   connection.query("DELETE FROM seating_lucid_agency.has_a_emp_temp WHERE rangeID = ?;", id, function(err, result) {
     if (err && env.logErrors) {
@@ -785,6 +819,26 @@ exports.editOfficeToCompany = function(connection, values, officeID, companyID) 
       console.log(err);
     } else if (env.logQueries) {
       console.log("Office ID %d was assigned to company ID %d", values[0], values[1]);
+    }
+  });
+};
+
+exports.editPasswordReset = function(connection, values, id) {
+  connection.query("UPDATE seating_lucid_agency.password_reset SET ? WHERE reset_ID = ?;", [values, id], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Temporary password %d was edited in the database", id);
+    }
+  });
+};
+
+exports.editPasswordResetForEmployee = function(connection, values, id) {
+  connection.query("UPDATE seating_lucid_agency.password_reset SET ? WHERE employee_ID = ?;", [values, id], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Temporary password for employee %d was edited in the database", id);
     }
   });
 };
@@ -1275,6 +1329,26 @@ exports.getAllTeammatesForOneEmployeeConfidential = function(connection, employe
 
 exports.getAllEmployeesNotInTeammatesForOffice = function(connection, employeeID, officeID, callback) {
     connection.query('SELECT DISTINCT E.employeeID, E.firstName, E.lastName, E. email, E.department, E.title, E.restroomUsage, E.outOfDesk, E.pictureAddress FROM seating_lucid_agency.employee AS E, seating_lucid_agency.works_at as WO, seating_lucid_agency.office as O WHERE E.employeeID = WO.employeeKey AND WO.officeKey = O.officeID AND O.officeID = ? AND E.employeeID  <>  ? AND NOT (E.employeeID in (SELECT T.employee_teammate_id FROM seating_lucid_agency.employee_teammates AS T WHERE T.idemployee_teammates = ?));', [officeID, employeeID, employeeID], function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};
+
+exports.getPasswordReset = function(connection, id, callback) {
+  connection.query('SELECT R.reset_ID, R.token, R.time_created, R.employee_ID, E.email FROM seating_lucid_agency.password_reset as R, seating_lucid_agency.employee AS E WHERE E.employeeID = R.employee_ID AND R.reset_ID = 1;', function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};
+
+exports.getPasswordResetForEmployee = function(connection, id, callback) {
+  connection.query('SELECT R.reset_ID, R.token, R.time_created, R.employee_ID, E.email FROM seating_lucid_agency.password_reset as R, seating_lucid_agency.employee AS E WHERE E.employeeID = R.employee_ID AND R.employee_ID = ?;', function(err, result) {
     if (err) {
       callback(err, null);
     } else {
