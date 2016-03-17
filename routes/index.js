@@ -73,12 +73,7 @@ router.get('/login',function(req, res, next){
 });*/
 
 /* GET home page. */
-<<<<<<< HEAD
 /*router.get('/', function(req, res, next) {
-=======
-
-router.get('/', function(req, res, next) {
->>>>>>> 79d49ffbebf11bcce14f2a6553a111fbe5f98d47
   requireRole("user");
   res.render('index', {title: 'Lucid Agency Express Framework Testing'});
 });*/

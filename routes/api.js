@@ -1,6 +1,5 @@
 var apiError = require('../database/api_errors');
 var apiSuccess = require('../database/api_successes');
-var apiResponse = require('../database/api_response');
 var bcrypt = require('bcrypt');
 var csvParser = require('csv-parse');
 var env = require('../env');
@@ -86,7 +85,7 @@ var storage = multer.diskStorage({
     var originalname =file.originalname;
     var fileExtension = originalname.slice((originalname.lastIndexOf(".") - 1 >>> 0) + 2);
     var fileName = uuid.v4();
-    var newFileName = fileName + '.'+ fileExtension;
+    var newFileName = fileName + Date.now() + '.'+ fileExtension;
     callback(null, newFileName);
   }
 });
@@ -94,53 +93,15 @@ var upload = multer({ storage: storage });
 
 router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
   var file = req.file;
-  if (file){
-    var data = null;
-    var err = false;
-    try {
-      data=JSON.parse(JSON.stringify(req.body));
-    } catch (e) {
-          err=true;
-    }
-    if (err){
-      res.status(400).json(apiResponse.errors(true, 'invalid json'));
-    }
-    else if (data){
-      if (data.employeeID){
+  var data = JSON.parse(JSON.stringify(req.body));
+  var adder = {
+    pictureAddress: file.filename,
+    employeeID: data.employeeID
+  };
 
-          // try{
-          //   var temp=ParseInt(data.employeeID.toString());
-          // }
-          // catch(e){
-          //   err=true;
-          // }
-          // if (err){
-          //    res.status(400).json(apiResponse.errors(true, 'invalid employeeID'));
-          // }
-          // else{
-            var adder = {
-              pictureAddress: file.filename,
-              employeeID: data.employeeID
-            };
-            queries.updateEmployeeProfileImage(dbconnect, adder);
-            var response = {
-              success: true,
-              fileName: file.filename
-            };
-            res.status(200).json(response);
-         //}
-      }
-      else{
-        res.status(400).json(apiResponse.errors(true, 'missing employeeID'));
-      }
-    }
-    else{
-        res.status(400).json(apiResponse.errors(true, 'missing parameters'));
-    }
-  }
-  else{
-    res.status(400).json(apiResponse.errors(true, 'missing file'));
-  }
+  // Update Employee Profile Image
+  queries.updateEmployeeProfileImage(dbconnect, adder);
+  res.status(204).end();
 });
 
 router.get('/Media/ProfileImage/:id', function (req, res, next) {
@@ -151,19 +112,17 @@ router.get('/Media/ProfileImage/:id', function (req, res, next) {
     return res.json(apiError.errors("400","Incorrect parameters"));
   }
   queries.getEmployeeProfileImage(dbconnect, employeeID, function(err, result) {
-    if (isNaN(employeeID)){
-        res.status(400).json(apiResponse.errors(true, "invalid employee id"));
-    }
-    else if (result.length < 1){
-      res.status(400).json(apiResponse.errors(true, "no such employee"));
-    }
-    else {
+    if (err) {
+      res.json(apiError.errors("500","Error with get employee profile image query in database"));
+    } else {
       address = result[0].pictureAddress;
       address = path.join(__dirname+"./../public/documents/" + address);
       console.log(address);
       res.sendFile(address);
     }
   });
+
+});
 
 router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
   var file = req.file;
@@ -183,7 +142,8 @@ router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
     }
   });
   rs.pipe(parser);
-  res.status(204).json(apiResponse.errors(false, "employees added"));
+  //console.log(file.filename);
+  res.status(204).end();
 });
 
 /**************** Login Implementationn ****************/
@@ -198,12 +158,12 @@ router.post('/Authenticate', function(req, res) {
   try {
      employee = JSON.parse(JSON.stringify(req.body));
   } catch (e) {
-    return  res.json(apiResponse.errors(true,"invalid json"));
+    return res.json(apiError.errors("400","Error parsing JSON"));
   }
   u = employee.email;
   p = employee.password;
   if ( u === undefined || u === null || p === undefined || p === null) {
-    res.status(400).json(apiResponse.errors(true, "missing parameters"));
+    res.json(apiError.errors("400", "Missing parameters"));
   } else {
     queries.getUser(dbconnect, employee, function(err, rows) {
       if (!err) {
@@ -215,7 +175,6 @@ router.post('/Authenticate', function(req, res) {
               employee.password = dbUser.password;
               token = jwt.sign(employee, "test", {
                   expiresIn: moment().add(1, 'days').valueOf() // expires in 24 hours
-                  //expiresInSeconds: 5
               });
               res.json(apiSuccess.successToken(true, 'Enjoy your token!', token));
             } else {
@@ -229,30 +188,6 @@ router.post('/Authenticate', function(req, res) {
   }
 });
 
-// Mark for deletion since it is redundant
-/*router.post('/register', function(req, res){
-  console.log(req.body);
-  var user = null;
-  try {
-    user = JSON.parse(JSON.stringify(req.body));
-  } catch (e) {
-    res.json(apiResponse.errors("401","problems parsing json"));
-  }
-  var u = user.username;
-  var p = user.password;
-  if (u === undefined|| u === null || p === undefined || p === null) {
-    res.json(apiResponse.errors("401", "Missing parameters"));
-  } else{
-    queries.saveUser(dbconnect, user, function(err){
-      if (err){
-        res.json({ success: false, message: 'Registration failed' });
-      } else{
-        res.json({ success: true, message: 'Sucessfuly registered user '+ user.username.toString()});
-      }
-    })
-  }
-});*/
-
 // Verify the token and decode
 router.get('/Verify/', function(req, res, next) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
@@ -261,25 +196,24 @@ router.get('/Verify/', function(req, res, next) {
      // verifies secret and checks exp
      jwt.verify(token, 'test', function(err, decoded) {
        if (err) {
-         res.status(403).json({ success: false, message: 'Failed to authenticate token.' });
+         res.json(apiError.successError(false, 'Failed to authenticate token.'));
        } else {
          // If everything is good, save to request for use in other routes
          if (decoded.exp <= Date.now()) {
-           res.status(403).json(apiResponse.errors(true, "Token has expired"));
+           return res.json(apiError.errors("400", "Token has expired"));
          } else {
            req.decoded = decoded;
            //console.log(req.decoded);
            queries.validatedToken(dbconnect, req.decoded.email, req.decoded.password, function(err, results) {
-             res.json(results);
+             return res.json(results);
            });
          }
        }
      });
    } else {
-     res.status(403).json({
-         success: false,
-         message: 'No token provided.'
-     });
+     // if there is no token
+     // return an error
+     return res.status(403).json(apiError.successError(false, 'No token provided.'));
    }
 });
 
@@ -311,27 +245,8 @@ router.get('/Verify/', function(req, res, next) {
    }
 });*/
 
-/*// Mark for deletion since unimplemented
-router.get('/seed', function(req, res){
-  queries.seedUsers(dbconnect);
-  res.render("seed");
-});
-
-// Mark for deletion since unimplemented
-router.get('/users', function(req, res){
-  var users=[];
-  queries.getUsers(dbconnect, function(err, rows){
-    if (!err){
-      res.json(rows);
-    }
-    else{
-      res.json(users);
-    }
-  });
-});*/
-
-router.get('/Authenticate', function(req, res){
-  res.status(405).json(apiResponse.errors(true,"method not supported"));
+router.get('/Authenticate', function(req, res) {
+  res.json(apiError.errors("403","Access denied"));
 });
 
 /**************** Initialization Checks ****************/
@@ -397,22 +312,19 @@ router.get('/', function(req, res, next) {
 router.post('/AddCompany',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
 
-  if (data){
-    if (data.companyName){
-      req.getConnection(function(err, connection) {
-        var company = {
-          companyName : data.companyName
-        };
-        queries.addCompany(dbconnect, company);
-      });
-      res.status(200).json(apiResponse.created("Company Added."));
-    } else{
-      res.status(400).json(apiResponse.errors(true, "Missing Company Name"));
+  req.getConnection(function(err, connection) {
+    if (err) {
+      return res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      var company = {
+        companyName : data.companyName
+      };
+      queries.addCompany(dbconnect, company);
     }
-  } else{
-    res.status(400).json(apiResponse.errors(true, "invalid json"));
-  }
+  });
+  res.json(apiSuccess.successQuery(true, "Company added to seating_lucid_agency"));
 });
+
 
 router.post('/AddCluster',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
@@ -454,7 +366,7 @@ router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
   var officeID;
 
-  if ((data.officeID) !== null && (typeof data.officeID !== 'undefined')) {
+  if ((data.officeID) != null && (typeof data.officeID !== 'undefined')) {
     officeID = data.officeID;
   } else {
     return res.json(apiError.queryError("401", "OfficeID is not defined", null));
@@ -485,7 +397,7 @@ router.post('/AddEmployee',function(req, res, next) {
               } else {
                 var employeeID = results[0].employeeID;
 
-                if ((officeID) !== null && (typeof officeID !== 'undefined')) {
+                if ((officeID) != null && (typeof officeID !== 'undefined')) {
                   queries.addEmployeeToOffice(dbconnect, {employeeKey : employeeID, officeKey : officeID});
                 } else {
                   return res.json(apiError.queryError("401", "OfficeID is not defined", null));
@@ -920,26 +832,19 @@ router.post('/EditCompany/:id', function(req, res) {
   var ID = req.params.id;
 
   if (!isInt(ID)) {
-     res.status(400).json(apiResponse.errors(true, "not a valid id"));
-  } else{
-    if (data){
-      if (data.company){
-        req.getConnection(function(err, connection) {
-          var company = {
-            companyName : data.companyName
-          };
-          queries.editCompany(dbconnect, company, ID);
-        });
-        res.status(200).json(apiResponse.created("Company edited"));
-      }
-      else{
-          res.status(400).json(apiResponse.errors(true, "missing company name"));
-      }
-    }
-    else{
-      res.status(400).json(apiResponse.errors(true, "missing company name"));
-    }
+    return res.json(apiError.errors("400","Incorrect parameters"));
   }
+  req.getConnection(function(err, connection) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      var company = {
+        companyName : data.companyName
+      };
+      queries.editCompany(dbconnect, company, ID);
+    }
+  });
+  res.json(apiSuccess.successQuery(true, "Company edited in seating_lucid_agency"));
 });
 
 router.post('/UpdateCoworkers/:id', function(req, res) {
@@ -1927,9 +1832,6 @@ router.post('/UpdatePassword',function(req, res) {
 router.post('/PasswordReset', function(req, res) {
   var user = JSON.parse(JSON.stringify(req.body));
   var newPassword = Math.round((Math.pow(36, 8) - Math.random() * Math.pow(36, 7))).toString(36).slice(1);
-
-  // Require
-  var postmark = require("postmark");
   var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
 
   queries.getUser(dbconnect, user, function(err, data) {
@@ -1980,8 +1882,6 @@ router.post('/SendEmail',function(req, res, next) {
   var emailData = JSON.parse(JSON.stringify(req.body));
   //Admin Reasons: Password update, password reset request, employee preferences changed (daily)
   //User Reasons: When added to update profile, then 5 days later remind them, after that every 10 days, then suggest update every 92 days
-  // Require
-  var postmark = require("postmark");
   // Example request
   var postmark = require("postmark");
   var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
