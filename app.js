@@ -105,6 +105,10 @@ app.use(function(err, req, res, next) {
   });
 });
 
+var deletePasswordResetTokens = new cronJob( '00 12 * * *', function(){
+  queries.deletePasswordResetTimeout(dbconnect);
+}, null, true);
+
 var dailyEmailJob = new cronJob( '57 16 * * *', function(){
   // Require
   var postmark = require("postmark");

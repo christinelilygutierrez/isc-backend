@@ -366,11 +366,7 @@ router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
   var officeID;
 
-  if ((data.officeID) != null && (typeof data.officeID !== 'undefined')) {
-    officeID = data.officeID;
-  } else {
-    return res.json(apiError.queryError("401", "OfficeID is not defined", null));
-  }
+  
   bcrypt.genSalt(10, function(err, salt) {
     bcrypt.hash(data.password, salt, function(err, hash) {
       req.getConnection(function(err, connection) {
@@ -605,6 +601,7 @@ router.post('/AddPasswordReset',function(req, res, next) {
     token: data.token,
     employee_ID : data.employeeID
   };
+  console.log(adder);
   req.getConnection(function(err, connection) {
     if (err) {
       return res.json(apiError.queryError("500", err.toString(), data));
@@ -1721,23 +1718,22 @@ router.get('/OfficeOfEmployee/:id',function(req, res, next) {
   });
 });
 
-router.get('/PasswordReset/:id',function(req, res, next) {
-  if (!isInt(req.params.id)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.getPasswordReset(dbconnect, req.params.id, function(err, data) {
+router.get('/PasswordReset/:token',function(req, res, next) {  
+  queries.getPasswordReset(dbconnect, req.params.token, function(err, data) {
     if (err) {
       res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
-      console.log("Temporary password #" + req.params.id +": " , data);
+      console.log("Token " + req.params.token +": " , data);
       res.json(data);
     } else {
+      console.log(data);
       res.json(data);
     }
   });
 });
 
 router.get('/PasswordResetForEmployee/:id',function(req, res, next) {
+  console.log(req.params.id);
   if (!isInt(req.params.id)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
   }
@@ -1748,6 +1744,7 @@ router.get('/PasswordResetForEmployee/:id',function(req, res, next) {
       console.log("Temporary password for employee #" + req.params.id +": " , data);
       res.json(data);
     } else {
+      console.log(data);
       res.json(data);
     }
   });
@@ -1829,57 +1826,55 @@ router.post('/UpdatePassword',function(req, res) {
   });
 });
 
-router.post('/PasswordReset', function(req, res) {
+router.post('/PasswordResetEmailCheck', function(req, res) {
   var user = JSON.parse(JSON.stringify(req.body));
-  var newPassword = Math.round((Math.pow(36, 8) - Math.random() * Math.pow(36, 7))).toString(36).slice(1);
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
-
   queries.getUser(dbconnect, user, function(err, data) {
     console.log(data);
     if (data.length>0) {
-      //user was found, time to encrypt the password
-      var salt = bcrypt.genSaltSync(10);
-      //var hash = bcrypt.hashSync(values[data].password, salt);
-      hash = bcrypt.hashSync(newPassword, salt);
-      //update the user's password
-      queries.getOneEmployeeConfidential(dbconnect, data[0].employeeID, function(err, data) {
-        var query = JSON.parse(JSON.stringify(data));
-        console.log(data);
-        var employee = {
-          firstName : query[0].firstName,
-          lastName : query[0].lastName,
-          email : query[0].email,
-          password : hash,
-          department : query[0].department,
-          title : query[0].title,
-          restroomUsage : query[0].restroomUsage,
-          noisePreference : query[0].noisePreference,
-          outOfDesk : query[0].outOfDesk,
-          pictureAddress : query[0].pictureAddress,
-          permissionLevel : query[0].permissionLevel
-        };
-
-        queries.editEmployee(dbconnect, employee, query[0].employeeID);
-      });
-      //now send the email to the user
-      client.sendEmail({
-          "From": "djgraca@asu.edu",
-          "To": user.email,
-          "Subject": 'You have requested a Password Reset',
-          "TextBody": "Please use this temporary password to login: "+newPassword
-      });
-      res.send("Password Reset");
+      res.json({ success: true, message: 'User found.', data });
     }
     else {
-      console.log("4");
       res.json({ success: false, message: 'No such user.' });
     }
   });
 });
 
+router.post('/PasswordResetUpdate', function(req, res) {
+  var user = JSON.parse(JSON.stringify(req.body));
+  console.log(user);
+  queries.getOneEmployeeConfidential(dbconnect, user.employeeID, function(err, data) {
+    var query = JSON.parse(JSON.stringify(data));
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    }
+    else {
+      bcrypt.genSalt(10, function(err, salt) {
+        bcrypt.hash(user.password, salt, function(err, hash) {
+          var employee = {
+            firstName : query[0].firstName,
+            lastName : query[0].lastName,
+            email : query[0].email,
+            password : hash,
+            department : query[0].department,
+            title : query[0].title,
+            restroomUsage : query[0].restroomUsage,
+            noisePreference : query[0].noisePreference,
+            outOfDesk : query[0].outOfDesk,
+            pictureAddress : query[0].pictureAddress,
+            permissionLevel : query[0].permissionLevel
+          };
+          queries.editEmployee(dbconnect, employee, user.employeeID);
+          res.json(apiSuccess.successQuery(true, "Password is updated in seating_lucid_agency"));
+        });
+      });
+    }
+  });
+})
+
 /**************** E-mail API ****************/
 router.post('/SendEmail',function(req, res, next) {
   var emailData = JSON.parse(JSON.stringify(req.body));
+  console.log(emailData);
   //Admin Reasons: Password update, password reset request, employee preferences changed (daily)
   //User Reasons: When added to update profile, then 5 days later remind them, after that every 10 days, then suggest update every 92 days
   // Example request
@@ -1906,6 +1901,7 @@ router.post('/SendEmail',function(req, res, next) {
       }
     });
   } else if (emailData.reason ==='passwordReset') {
+    //email Admin about it
     queries.emailSuperAdmins(dbconnect, function(err, data) {
       if (err) {
         res.json(apiError.queryError("500", err.toString(), data));
@@ -1925,6 +1921,14 @@ router.post('/SendEmail',function(req, res, next) {
         }
       }
     });
+    //email user about it
+    client.sendEmail({
+        "From": "djgraca@asu.edu",
+        "To": emailData.email,
+        "Subject": 'Password Reset Requested!',
+        "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+emailData.token
+    });
+
   } else if (emailData.reason ==='employeeUpdate') {
     queries.emailSuperAdmins(dbconnect, function(err, data) {
       if (err) {

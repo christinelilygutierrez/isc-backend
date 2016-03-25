@@ -573,11 +573,21 @@ exports.deleteOfficeFromCompany = function(connection, officeID, companyID) {
 };
 
 exports.deletePasswordReset = function(connection, resetID) {
-  connection.query("DELETE FROM seating_lucid_agency.password_reset WHERE reset_ID;", resetID, function(err, result) {
+  connection.query("DELETE FROM seating_lucid_agency.password_reset WHERE reset_ID=?;", resetID, function(err, result) {
     if (err && env.logErrors) {
       console.log(err);
     } else if (env.logQueries) {
       console.log("Temporary password deleted for %d", resetID);
+    }
+  });
+};
+
+exports.deletePasswordResetTimeout = function(connection) {
+  connection.query("DELETE FROM seating_lucid_agency.password_reset WHERE time_created < (NOW() - INTERVAL 20 MINUTE);", function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Temporary passwords deleted that were older than 20 minutes.");
     }
   });
 };
@@ -1337,8 +1347,8 @@ exports.getAllEmployeesNotInTeammatesForOffice = function(connection, employeeID
   });
 };
 
-exports.getPasswordReset = function(connection, id, callback) {
-  connection.query('SELECT R.reset_ID, R.token, R.time_created, R.employee_ID, E.email FROM seating_lucid_agency.password_reset as R, seating_lucid_agency.employee AS E WHERE E.employeeID = R.employee_ID AND R.reset_ID = 1;', function(err, result) {
+exports.getPasswordReset = function(connection, token, callback) {
+  connection.query('SELECT R.reset_ID, R.token, R.time_created, R.employee_ID FROM seating_lucid_agency.password_reset as R WHERE R.token=? AND R.time_created > (NOW() - INTERVAL 20 MINUTE);', [token], function(err, result) {
     if (err) {
       callback(err, null);
     } else {
@@ -1348,7 +1358,7 @@ exports.getPasswordReset = function(connection, id, callback) {
 };
 
 exports.getPasswordResetForEmployee = function(connection, id, callback) {
-  connection.query('SELECT R.reset_ID, R.token, R.time_created, R.employee_ID, E.email FROM seating_lucid_agency.password_reset as R, seating_lucid_agency.employee AS E WHERE E.employeeID = R.employee_ID AND R.employee_ID = ?;', function(err, result) {
+  connection.query('SELECT R.reset_ID, R.token, R.time_created, R.employee_ID, E.email FROM seating_lucid_agency.password_reset as R, seating_lucid_agency.employee AS E WHERE E.employeeID = R.employee_ID AND R.employee_ID = ?;', [id], function(err, result) {
     if (err) {
       callback(err, null);
     } else {
