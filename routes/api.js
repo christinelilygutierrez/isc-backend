@@ -432,7 +432,22 @@ router.post('/AddCompany',function(req, res, next) {
       var company = {
         companyName : data.companyName
       };
-      queries.addCompany(dbconnect, company);
+      queries.addCompany(dbconnect, company, function(err) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          console.log("Company added!");
+          queries.getLastCompany(dbconnect, function(err, results) {
+            if (err) {
+              return res.json(apiError.queryError("500", err.toString(), data));
+            } else {
+              console.log("Last company ID retrieved");
+              console.log(results);
+              queries.addAllSuperadminToCompany(dbconnect, results[0].companyID);
+            }
+          });
+        }
+      });
     }
   });
   res.json(apiSuccess.successQuery(true, "Company added to seating_lucid_agency"));
@@ -479,6 +494,8 @@ router.post('/AddDesk',function(req, res, next) {
 router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
   var officeID;
+  var companyID;
+  var permissionLevel;
 
   bcrypt.genSalt(10, function(err, salt) {
     bcrypt.hash(data.password, salt, function(err, hash) {
@@ -496,6 +513,9 @@ router.post('/AddEmployee',function(req, res, next) {
           pictureAddress : data.pictureAddress,
           permissionLevel : data.permissionLevel
         };
+        officeID = data.officeID;
+        companyID = data.companyID;
+        permissionLevel = data.permissionLevel;
         queries.addEmployee(dbconnect, employee, function (err) {
           if (err) {
             return res.json(apiError.queryError("500", err.toString(), data));
@@ -508,9 +528,19 @@ router.post('/AddEmployee',function(req, res, next) {
                 if (isInt(officeID)) {
                   queries.addEmployeeToOffice(dbconnect, {employeeKey : employeeID, officeKey : officeID});
                 }
-                queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
+                if (isInt(companyID) && permissionLevel == "admin") {
+                  queries.addAdminToCompany(dbconnect, {admin_ID: employeeID, company_ID: companyID}, function (err) {
+                    if (err) {
+                      return res.json(apiError.queryError("500", err.toString(), data));
+                    }
+                  });
+                } else if (isInt(companyID) && permissionLevel == "superadmin") {
+                  queries.addSuperadminToAllCompanies(dbconnect, employeeID);
+                }
+                if (isInt(data.temperatureRangeID)) {
+                  queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
+                }
                 var item = 0;
-
                 for (item in data.teammates) {
                   queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: data.teammates[item].employeeID});
                 }
