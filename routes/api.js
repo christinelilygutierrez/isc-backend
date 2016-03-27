@@ -3,6 +3,7 @@ var apiSuccess = require('../database/api_successes');
 var bcrypt = require('bcrypt');
 var csvParser = require('csv-parse');
 var env = require('../env');
+var exec = require('child_process').exec;
 var express = require('express');
 var fs = require('fs');
 var jwt = require('jsonwebtoken');
@@ -12,19 +13,34 @@ var postmark = require("postmark");
 var queries = require('../database/queries');
 var router = express.Router();
 var uuid = require('node-uuid');
+var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 
 /**************** Utility Functions ****************/
 function isInt(value) {
   return !isNaN(value) &&
-         parseInt(Number(value)) == value &&
-         !isNaN(parseInt(value, 10));
+  parseInt(Number(value)) == value &&
+  !isNaN(parseInt(value, 10));
 }
 
 function employeePropertiesToArray(employee) {
   return Object.keys(employee).map(function(k) {
-     return employee[k];
-   }
- );
+    return employee[k];
+  }
+);
+};
+
+function readTextFile(file) {
+  var rawFile = new XMLHttpRequest();
+  rawFile.open("GET", file, false);
+  rawFile.onreadystatechange = function () {
+    if(rawFile.readyState === 4) {
+      if(rawFile.status === 200 || rawFile.status == 0) {
+        var allText = rawFile.responseText;
+        return allText;
+      }
+    }
+  }
+  rawFile.send(null);
 };
 
 /**************** Database Connection ****************/
@@ -66,7 +82,7 @@ dbconnect.connect(function(err) {
   } else if (env.logErrors) {
     console.log("Error connecting to MySQL", err);
   } else {
-    console.log("Error connecting MySQL");
+    console.log("Error connecting to MySQL");
   }
 });
 
@@ -104,6 +120,14 @@ router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
   res.status(204).end();
 });
 
+router.get('/Media/DefaultImage/', function (req, res, next) {
+  var address;
+
+  address = path.join(__dirname+"./../public/documents/default.jpg");
+  console.log(address);
+  res.sendFile(address);
+});
+
 router.get('/Media/ProfileImage/:id', function (req, res, next) {
   var employeeID = req.params.id;
   var address;
@@ -121,7 +145,6 @@ router.get('/Media/ProfileImage/:id', function (req, res, next) {
       res.sendFile(address);
     }
   });
-
 });
 
 router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
@@ -146,6 +169,24 @@ router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
   res.status(204).end();
 });
 
+/**************** Algorithm Call *****************/
+router.post('/Algorithm/Execute', function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var address = path.join(__dirname + "./../seating_chart_algorithm");
+  var similarityFile = address + "/similarity_files/" + data.similarityFile;
+  var employeeFile = address + "/employee_files/" +  data.employeeFile;
+  var chartFile = address + "/chart_files/" +  data.chartFile;
+  var cmd = 'java -jar Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile;
+  var result;
+  //console.log(cmd);
+  exec(cmd, function(error, stdout, stderr) {
+    //console.log(stdout);
+    result = readTextFile(address + 'output.json');
+    console.log(result);
+  });
+  res.status(200).end();
+});
+
 /**************** Login Implementationn ****************/
 // Create a token if an employee signs in
 router.post('/Authenticate', function(req, res) {
@@ -156,7 +197,7 @@ router.post('/Authenticate', function(req, res) {
   var token;
 
   try {
-     employee = JSON.parse(JSON.stringify(req.body));
+    employee = JSON.parse(JSON.stringify(req.body));
   } catch (e) {
     return res.json(apiError.errors("400","Error parsing JSON"));
   }
@@ -170,16 +211,16 @@ router.post('/Authenticate', function(req, res) {
         if (rows.length < 1) {
           res.json(apiError.successError(false,'Authentication failed. Employee not found.'));
         } else {
-            dbUser = JSON.parse(JSON.stringify(rows[0]));
-            if (dbUser.email === u && bcrypt.compareSync(p, dbUser.password)) {
-              employee.password = dbUser.password;
-              token = jwt.sign(employee, "test", {
-                  expiresIn: moment().add(1, 'days').valueOf() // expires in 24 hours
-              });
-              res.json(apiSuccess.successToken(true, 'Enjoy your token!', token));
-            } else {
-              res.json(apiError.successError(false, 'Authentication failed. Incorrect Credentials.'));
-            }
+          dbUser = JSON.parse(JSON.stringify(rows[0]));
+          if (dbUser.email === u && bcrypt.compareSync(p, dbUser.password)) {
+            employee.password = dbUser.password;
+            token = jwt.sign(employee, "test", {
+              expiresIn: moment().add(1, 'days').valueOf() // expires in 24 hours
+            });
+            res.json(apiSuccess.successToken(true, 'Enjoy your token!', token));
+          } else {
+            res.json(apiError.successError(false, 'Authentication failed. Incorrect Credentials.'));
+          }
         }
       } else {
         res.json(apiError.successError(false, 'Authentication failed. Employee not found.'));
@@ -191,58 +232,58 @@ router.post('/Authenticate', function(req, res) {
 // Verify the token and decode
 router.get('/Verify/', function(req, res, next) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-   // decode token
-   if (token) {
-     // verifies secret and checks exp
-     jwt.verify(token, 'test', function(err, decoded) {
-       if (err) {
-         res.json(apiError.successError(false, 'Failed to authenticate token.'));
-       } else {
-         // If everything is good, save to request for use in other routes
-         if (decoded.exp <= Date.now()) {
-           return res.json(apiError.errors("400", "Token has expired"));
-         } else {
-           req.decoded = decoded;
-           //console.log(req.decoded);
-           queries.validatedToken(dbconnect, req.decoded.email, req.decoded.password, function(err, results) {
-             return res.json(results);
-           });
-         }
-       }
-     });
-   } else {
-     // if there is no token
-     // return an error
-     return res.status(403).json(apiError.successError(false, 'No token provided.'));
-   }
+  // decode token
+  if (token) {
+    // verifies secret and checks exp
+    jwt.verify(token, 'test', function(err, decoded) {
+      if (err) {
+        res.json(apiError.successError(false, 'Failed to authenticate token.'));
+      } else {
+        // If everything is good, save to request for use in other routes
+        if (decoded.exp <= Date.now()) {
+          return res.json(apiError.errors("400", "Token has expired"));
+        } else {
+          req.decoded = decoded;
+          //console.log(req.decoded);
+          queries.validatedToken(dbconnect, req.decoded.email, req.decoded.password, function(err, results) {
+            return res.json(results);
+          });
+        }
+      }
+    });
+  } else {
+    // if there is no token
+    // return an error
+    return res.status(403).json(apiError.successError(false, 'No token provided.'));
+  }
 });
 
 // Prevents access to page unless token is present
 /*router.use(function(req, res, next) {
-  var token = req.body.token || req.query.token || req.headers['x-access-token'];
-   // decode token
-   if (token) {
-     // verifies secret and checks exp
-     jwt.verify(token, 'test', function(err, decoded) {
-       if (err) {
-         return res.json({ success: false, message: 'Failed to authenticate token.' });
-       } else {
-         // if everything is good, save to request for use in other routes
-         req.decoded = decoded;
+var token = req.body.token || req.query.token || req.headers['x-access-token'];
+// decode token
+if (token) {
+// verifies secret and checks exp
+jwt.verify(token, 'test', function(err, decoded) {
+if (err) {
+return res.json({ success: false, message: 'Failed to authenticate token.' });
+} else {
+// if everything is good, save to request for use in other routes
+req.decoded = decoded;
 
-         console.log(req.decoded);
-         req.session.employee = req.decoded;
-         next();
-       }
-     });
-   } else {
-     // if there is no token
-     // return an error
-     return res.status(403).send({
-         success: false,
-         message: 'No token provided.'
-     });
-   }
+console.log(req.decoded);
+req.session.employee = req.decoded;
+next();
+}
+});
+} else {
+// if there is no token
+// return an error
+return res.status(403).send({
+success: false,
+message: 'No token provided.'
+});
+}
 });*/
 
 router.get('/Authenticate', function(req, res) {
@@ -263,12 +304,84 @@ router.get('/ExistsCompany',function(req, res, next) {
   });
 });
 
+router.get('/ExistsCompanyForAdmin/:id',function(req, res, next) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.existsCompanyForAdmin(dbconnect, ID, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there a company for admin? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsEmployee/:id',function(req, res, next) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.existsEmployee(dbconnect, ID, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there an employee? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsEmployeeInOffice/:id',function(req, res, next) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.existsEmployeeInOffice(dbconnect, ID, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there the employee in office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/ExistsOffice',function(req, res, next) {
   queries.existsOffice(dbconnect, function(err, data) {
     if (err) {
       res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Is there an office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsOfficeForAdmin/:id',function(req, res, next) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.existsOfficeForAdmin(dbconnect, ID, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there an office for admin? 0 means no and 1 means yes: " , data);
       res.json(data);
     } else {
       res.json(data);
@@ -362,11 +475,11 @@ router.post('/AddDesk',function(req, res, next) {
   res.json(apiSuccess.successQuery(true, "Desk added to seating_lucid_agency"));
 });
 
+
 router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
   var officeID;
 
-  
   bcrypt.genSalt(10, function(err, salt) {
     bcrypt.hash(data.password, salt, function(err, hash) {
       req.getConnection(function(err, connection) {
@@ -392,11 +505,8 @@ router.post('/AddEmployee',function(req, res, next) {
                 return res.json(apiError.queryError("500", err.toString(), data));
               } else {
                 var employeeID = results[0].employeeID;
-
-                if ((officeID) != null && (typeof officeID !== 'undefined')) {
+                if (isInt(officeID)) {
                   queries.addEmployeeToOffice(dbconnect, {employeeKey : employeeID, officeKey : officeID});
-                } else {
-                  return res.json(apiError.queryError("401", "OfficeID is not defined", null));
                 }
                 queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
                 var item = 0;
@@ -444,6 +554,20 @@ router.post('/AddEmployees',function(req, res, next) {
     queries.addEmployeeSync(dbconnect, employee, officeID);
   }
   res.json(apiSuccess.successQuery(true, "Employees added to seating_lucid_agency from CSV"));
+});
+
+router.post('/AddAdminToCompany',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var adder = {
+    admin_ID : data.employeeID,
+    company_ID : data.companyID
+  };
+  queries.addAdminToCompany(dbconnect, adder, function(err) {
+    if (err) {
+      return res.json(apiError.queryError("500", err.toString(), data));
+    }
+  });
+  res.json(apiSuccess.successQuery(true, "Admin added to company in seating_lucid_agency"));
 });
 
 router.post('/AddEmployeeToOffice',function(req, res, next) {
@@ -592,7 +716,7 @@ router.post('/AddOfficeEmployee',function(req, res, next) {
       });
     });
   });
-res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
+  res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
 });
 
 router.post('/AddPasswordReset',function(req, res, next) {
@@ -601,7 +725,8 @@ router.post('/AddPasswordReset',function(req, res, next) {
     token: data.token,
     employee_ID : data.employeeID
   };
-  console.log(adder);
+
+  //console.log(adder);
   req.getConnection(function(err, connection) {
     if (err) {
       return res.json(apiError.queryError("500", err.toString(), data));
@@ -630,7 +755,7 @@ router.post('/AddTeammatesToEmployee',function(req, res, next) {
         adder.push(item.employeeID);
       }
       for (var i in adder) {
-          queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: adder[i]});
+        queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: adder[i]});
       }
     }
   });
@@ -744,6 +869,16 @@ router.get('/DeleteEmployee/:id', function(req, res) {
   res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
 });
 
+router.get('/DeleteEmployeeFromOffice/:id', function(req, res) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.deleteEmployeeFromOffice(dbconnect, ID);
+  res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
+});
+
 router.get('/DeleteOffice/:id', function(req, res) {
   var ID = req.params.id;
 
@@ -791,6 +926,17 @@ router.get('/DeletePasswordResetForEmployee/:employeeID', function(req, res) {
   }
   queries.deletePasswordResetForEmployee(dbconnect, ID);
   res.json(apiSuccess.successQuery(true, "Temporary reset password deleted in seating_lucid_agency"));
+});
+
+router.get('/DeleteAdminFromCompany/:adminID/:companyID', function(req, res) {
+  var admin_ID = req.params.adminID;
+  var company_ID = req.params.companyID;
+
+  if (!isInt(admin_ID) || !isInt(company_ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.deleteAdminToCompany(dbconnect, admin_ID, company_ID);
+  res.json(apiSuccess.successQuery(true, "Admin " + admin_ID + " deleted from company " + company_ID));
 });
 
 router.get('/DeleteEntireBlackListForEmployee/:id', function(req, res) {
@@ -878,33 +1024,48 @@ router.post('/EditEmployee/:id', function(req, res) {
   if (!isInt(ID)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
   }
-  bcrypt.genSalt(10, function(err, salt) {
-    bcrypt.hash(data.password, salt, function(err, hash) {
-      req.getConnection(function(err, connection) {
-        if (err) {
-          res.json(apiError.queryError("500", err.toString(), data));
-        } else {
-          var employee = {
-            firstName : data.firstName,
-            lastName : data.lastName,
-            email : data.email,
-            password : hash,
-            department : data.department,
-            title : data.title,
-            restroomUsage : data.restroomUsage,
-            noisePreference : data.noisePreference,
-            outOfDesk : data.outOfDesk,
-            pictureAddress : data.pictureAddress,
-            permissionLevel : data.permissionLevel,
-            haveUpdated : 1,
-            accountUpdated: moment().format('YYYY-MM-DD hh:mm:ss')
-          };
-          queries.editEmployee(dbconnect, employee, ID);
-        }
-      });
-    });
+  req.getConnection(function(err, connection) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      var employee = {
+        firstName : data.firstName,
+        lastName : data.lastName,
+        email : data.email,
+        department : data.department,
+        title : data.title,
+        restroomUsage : data.restroomUsage,
+        noisePreference : data.noisePreference,
+        outOfDesk : data.outOfDesk,
+        pictureAddress : data.pictureAddress,
+        haveUpdated : 1,
+        accountUpdated: moment().format('YYYY-MM-DD hh:mm:ss')
+      };
+      queries.editEmployee(dbconnect, employee, ID);
+    }
   });
   res.json(apiSuccess.successQuery(true, "Employee edited in seating_lucid_agency"));
+});
+
+router.post('/EditAdminToCompany/:id', function(req, res) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+  var adder = {
+    admin_ID: data.employeeID,
+    company_ID: data.companyID
+  };
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  req.getConnection(function(err, connection) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      queries.editAdminToCompany(dbconnect, adder, adder.admin_ID, ID);
+    }
+  });
+  res.json(apiSuccess.successQuery(true, "Moved Admin #"+ adder.admin_ID + " to Company #" + adder.company_ID));
 });
 
 router.post('/EditEmployeeUpdatedForOffice/:id',function(req, res, next) {
@@ -925,6 +1086,27 @@ router.post('/EditEmployeeUpdatedForOffice/:id',function(req, res, next) {
     }
   });
   res.json(apiSuccess.successQuery(true, "Employee edited for office in seating_lucid_agency"));
+});
+
+router.post('/EditEmployeeWorksAtOffice/:id', function(req, res) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+  var adder = {
+    employeeKey: data.employeeID,
+    officeKey: data.officeID
+  };
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  req.getConnection(function(err, connection) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      queries.editEmployeeToOffice(dbconnect, adder, adder.employeeKey, ID);
+    }
+  });
+  res.json(apiSuccess.successQuery(true, "Moved Employee #"+ adder.employeeID + " to Office #" + adder.officeID));
 });
 
 router.post('/EditOffice/:id',function(req, res, next) {
@@ -1068,6 +1250,35 @@ router.post('/EditTemperatureRange/:id',function(req, res, next) {
 });
 
 /**************** Get Queries ****************/
+router.get('/AdminsForCompany/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.getAdminsForCompany(dbconnect, req.params.id, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Company #" + req.params.id + "'s admins: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/AllAdminEmployees',function(req, res, next) {
+  queries.getAllAdminEmployees(dbconnect, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("The list of all admin empoloyees : ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/AllBlacklistEmployees',function(req, res, next) {
   queries.getAllBlacklistEmployees(dbconnect, function(err, data) {
     if (err) {
@@ -1330,6 +1541,22 @@ router.get('/CompanyOffices/:id',function(req, res, next) {
       res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Company #" + req.params.id + " offices: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/CompaniesForAdmin/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.getCompaniesForAdmin(dbconnect, req.params.id, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Admin #" + req.params.id + "'s companies: " , data);
       res.json(data);
     } else {
       res.json(data);
@@ -1718,7 +1945,7 @@ router.get('/OfficeOfEmployee/:id',function(req, res, next) {
   });
 });
 
-router.get('/PasswordReset/:token',function(req, res, next) {  
+router.get('/PasswordReset/:token',function(req, res, next) {
   queries.getPasswordReset(dbconnect, req.params.token, function(err, data) {
     if (err) {
       res.json(apiError.queryError("500", err.toString(), data));
@@ -1923,10 +2150,10 @@ router.post('/SendEmail',function(req, res, next) {
     });
     //email user about it
     client.sendEmail({
-        "From": "djgraca@asu.edu",
-        "To": emailData.email,
-        "Subject": 'Password Reset Requested!',
-        "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+emailData.token
+      "From": "djgraca@asu.edu",
+      "To": emailData.email,
+      "Subject": 'Password Reset Requested!',
+      "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+emailData.token
     });
 
   } else if (emailData.reason ==='employeeUpdate') {
@@ -1954,14 +2181,14 @@ router.post('/SendEmail',function(req, res, next) {
     //console.log("got here");
     //console.log(emailData.to);
     client.sendEmail({
-        "From": "djgraca@asu.edu",
-        "To": emailData.to,
-        "Subject": 'Welcome to DeskSeeker!',
-        "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password
+      "From": "djgraca@asu.edu",
+      "To": emailData.to,
+      "Subject": 'Welcome to DeskSeeker!',
+      "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password
     });
   }
   //console.log("finished");
-res.send("Email sent");
+  res.send("Email sent");
 });
 
 module.exports = router;

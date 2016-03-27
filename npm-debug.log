@@ -1,7 +1,7 @@
 0 info it worked if it ends with ok
 1 verbose cli [ '/usr/bin/nodejs', '/usr/bin/npm', 'start' ]
 2 info using npm@3.7.3
-3 info using node@v5.8.0
+3 info using node@v5.9.1
 4 verbose run-script [ 'prestart', 'start', 'poststart' ]
 5 info lifecycle isc-backend@0.0.0~prestart: isc-backend@0.0.0
 6 silly lifecycle isc-backend@0.0.0~prestart: no script for prestart, continuing
@@ -24,9 +24,9 @@
 14 verbose stack     at Process.ChildProcess._handle.onexit (internal/child_process.js:215:5)
 15 verbose pkgid isc-backend@0.0.0
 16 verbose cwd /home/garrett/Documents/GitHub/isc-backend
-17 error Linux 3.19.0-51-generic
+17 error Linux 3.19.0-56-generic
 18 error argv "/usr/bin/nodejs" "/usr/bin/npm" "start"
-19 error node v5.8.0
+19 error node v5.9.1
 20 error npm  v3.7.3
 21 error code ELIFECYCLE
 22 error isc-backend@0.0.0 start: `node ./bin/www`
