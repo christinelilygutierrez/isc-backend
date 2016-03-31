@@ -1069,7 +1069,7 @@ router.post('/EditEmployee/:id', function(req, res) {
         outOfDesk : data.outOfDesk,
         pictureAddress : data.pictureAddress,
         haveUpdated : 1,
-        accountUpdated: moment().format('YYYY-MM-DD hh:mm:ss')
+        accountUpdated: (new Date)
       };
       queries.editEmployee(dbconnect, employee, ID);
     }
