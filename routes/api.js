@@ -176,7 +176,8 @@ router.post('/Algorithm/Execute', function(req, res, next) {
   var similarityFile = address + "/similarity_files/" + data.similarityFile;
   var employeeFile = address + "/employee_files/" +  data.employeeFile;
   var chartFile = address + "/chart_files/" +  data.chartFile;
-  var cmd = 'java -jar Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile;
+  var cmd = 'java -jar ' + address+'/Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile;
+  console.log(cmd);
   var result;
   //console.log(cmd);
   exec(cmd, function(error, stdout, stderr) {
