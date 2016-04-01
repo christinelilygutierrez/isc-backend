@@ -29,6 +29,7 @@
     "postmark": "^1.2.1",
     "serve-favicon": "~2.3.0",
     "should": "^8.2.2",
-    "supertest": "^1.2.0"
+    "supertest": "^1.2.0",
+    "xmlhttprequest": "^1.8.0"
   }
 }

@@ -7,7 +7,7 @@ var apiResponse = require('../database/api_response');
 
 /************** Modules for Database **************/
 var mysql = require('mysql');
-var render_queries = require('../database/render_api');
+var render_queries = require('../database/backendtest');
 var connection  = require('express-myconnection');
 
 /************** Connect to MySQL **************/
@@ -33,14 +33,15 @@ function requireRole(role) {
   };
 }
 
-router.get('/upload', function(req, res, next ){
+/*router.get('/upload', function(req, res, next ){
   res.sendFile(path.join(__dirname+'./../views/upload.html'));
 });
 
 // Login
 router.get('/login',function(req, res, next){
   res.sendFile(path.join(__dirname+'./../views/login.html'));
-});
+});*/
+
 // router.get('/register',function(req, res, next){
 //   res.sendFile(path.join(__dirname+'./../views/register.html'));
 // });
@@ -72,13 +73,13 @@ router.get('/login',function(req, res, next){
 });*/
 
 /* GET home page. */
-
-router.get('/', function(req, res, next) {
+/*router.get('/', function(req, res, next) {
   requireRole("user");
   res.render('index', {title: 'Lucid Agency Express Framework Testing'});
-});
+});*/
 
 /************** RESTful API for Webpages **************/
+/*
 // GET Employees Page.
 router.get('/employees', render_queries.getAllEmployees);
 
@@ -132,5 +133,6 @@ router.post('/clusters/edit/:id', render_queries.confirmEditCluster);
 
 // GET the desk to delete
 router.get('/clusters/delete/:id', render_queries.deleteCluster);
+*/
 
 module.exports = router;
