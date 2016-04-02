@@ -168,6 +168,16 @@ exports.existsTemperatureRange = function(connection, callback) {
   });
 };
 
+exports.existsTemperatureRangeForEmployee = function(connection, employeeID, callback) {
+  connection.query("SELECT EXISTS (SELECT employeeID FROM has_a_emp_temp WHERE employeeID = ?) AS RESULT;", employeeID, function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, result);
+    }
+  });
+};
+
 // Non-Login Queries
 exports.addCompany = function(connection, values, callback) {
   connection.query("INSERT INTO seating_lucid_agency.company SET ?;", values, function(err, result) {

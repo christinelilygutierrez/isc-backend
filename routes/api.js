@@ -1175,7 +1175,7 @@ router.post('/EditPasswordReset/:id', function(req, res) {
   var ID = req.params.id;
   var adder = {
     token: data.token,
-    time_created: moment().format('YYYY-MM-DD hh:mm:ss'),
+    time_created: (new Date),
     employee_ID: data.employee_ID
   };
 
@@ -1197,7 +1197,7 @@ router.post('/EditPasswordResetForEmployee/:id', function(req, res) {
   var ID = req.params.id;
   var adder = {
     token: data.token,
-    time_created: moment().format('YYYY-MM-DD hh:mm:ss'),
+    time_created: (new Date),
     employee_ID: data.employee_ID
   };
 
@@ -1223,18 +1223,29 @@ router.post('/EditEmployeePreferences/:id', function(req, res) {
     noisePreference : data.noisePreference,
     outOfDesk : data.outOfDesk,
     haveUpdated : 1,
-    accountUpdated: moment().format('YYYY-MM-DD hh:mm:ss')
+    accountUpdated: (new Date)
   };
 
   if (!isInt(ID)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
   }
+  console.log("EmployeeID: " + ID + "\ntemperatureRangeID: " + temperatureRangeID);
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      return res.json(apiError.queryError("500", err.toString(), data));
     } else {
       queries.editEmployee(dbconnect, employee, ID);
-      queries.editRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID}, ID);
+      queries.existsTemperatureRangeForEmployee(dbconnect, ID, function(err, result) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), result));
+        } else {
+          if (result[0].result == 1) {
+            queries.editRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID}, ID);
+          } else {
+            queries.addRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID});
+          }
+        }
+      });
     }
   });
   res.json(apiSuccess.successQuery(true, "Employee preferences updated in seating_lucid_agency"));
