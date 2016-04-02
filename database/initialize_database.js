@@ -1,7 +1,7 @@
 exports.initializeQuery = "DROP DATABASE IF EXISTS seating_lucid_agency;\
 CREATE DATABASE seating_lucid_agency;\
 USE seating_lucid_agency;\
-CREATE TABLE cluster ( \
+CREATE TABLE cluster (\
   clusterID int(10) unsigned NOT NULL AUTO_INCREMENT,\
   xcoordinate double NOT NULL,\
   ycoordinate double NOT NULL,\
@@ -11,7 +11,8 @@ CREATE TABLE company (\
   companyID int(10) unsigned NOT NULL AUTO_INCREMENT,\
   companyName varchar(45) NOT NULL,\
   PRIMARY KEY (companyID)\
-);\CREATE TABLE desk (\
+);\
+CREATE TABLE desk (\
   deskID int(10) unsigned NOT NULL AUTO_INCREMENT,\
   xcoordinate double NOT NULL,\
   ycoordinate double NOT NULL,\
@@ -34,7 +35,7 @@ CREATE TABLE employee (\
   permissionLevel varchar(30) NOT NULL,\
   haveUpdated tinyint(1) unsigned NOT NULL DEFAULT '0',\
   accountCreated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\
-  accountedUpdated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\
+  accountUpdated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\
   PRIMARY KEY (employeeID)\
 );\
 CREATE TABLE employee_blacklist (\
@@ -105,6 +106,14 @@ CREATE TABLE has_a_emp_temp (\
   CONSTRAINT employeeID FOREIGN KEY (employeeID) REFERENCES employee (employeeID) ON DELETE NO ACTION ON UPDATE NO ACTION,\
   CONSTRAINT rangeID FOREIGN KEY (rangeID) REFERENCES seating_lucid_agency.range (rangeID) ON DELETE NO ACTION ON UPDATE NO ACTION\
 );\
+CREATE TABLE manages (\
+  admin_ID int(10) unsigned NOT NULL,\
+  company_ID int(10) unsigned NOT NULL,\
+  PRIMARY KEY (admin_ID,company_ID),\
+  KEY companyID_idx (company_ID),\
+  CONSTRAINT ID_employee FOREIGN KEY (admin_ID) REFERENCES employee (employeeID) ON DELETE NO ACTION ON UPDATE NO ACTION,\
+  CONSTRAINT companyID FOREIGN KEY (company_ID) REFERENCES company (companyID) ON DELETE NO ACTION ON UPDATE NO ACTION\
+);\
 CREATE TABLE organized_by (\
   officePkey int(10) unsigned NOT NULL,\
   floorplanPkey int(10) unsigned NOT NULL,\
@@ -120,6 +129,15 @@ CREATE TABLE owned_by (\
   KEY companyKey_idx (IDforCompany),\
   CONSTRAINT companyKey FOREIGN KEY (IDforCompany) REFERENCES company (companyID) ON DELETE NO ACTION ON UPDATE NO ACTION,\
   CONSTRAINT officeID FOREIGN KEY (IDforOffice) REFERENCES office (officeID) ON DELETE NO ACTION ON UPDATE NO ACTION\
+);\
+CREATE TABLE password_reset (\
+  reset_ID int(10) unsigned NOT NULL AUTO_INCREMENT,\
+  token varchar(20) NOT NULL DEFAULT '',\
+  time_created timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\
+  employee_ID int(10) unsigned NOT NULL,\
+  PRIMARY KEY (reset_ID),\
+  KEY employee_ID (employee_ID),\
+  CONSTRAINT employee_ID FOREIGN KEY (employee_ID) REFERENCES employee (employeeID) ON DELETE NO ACTION ON UPDATE NO ACTION\
 );\
 CREATE TABLE sits_at (\
   IDemployee int(10) unsigned NOT NULL,\
@@ -145,4 +163,4 @@ CREATE TABLE works_at (\
   CONSTRAINT employeeKey FOREIGN KEY (employeeKey) REFERENCES employee (employeeID) ON DELETE NO ACTION ON UPDATE NO ACTION,\
   CONSTRAINT officeKey FOREIGN KEY (officeKey) REFERENCES office (officeID) ON DELETE NO ACTION ON UPDATE NO ACTION\
 );\
-"
+";

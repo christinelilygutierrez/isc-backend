@@ -73,10 +73,13 @@ dbconnect.connect(function(err) {
             queries.addEmployee(dbconnect, employee, function (err) {
               if (err) {
                 console.log(err);
+              } else {
+                console.log("Superadmin created");
               }
             });
           });
         });
+        console.log("Database successfully initialized");
       }
     });
   } else if (env.logErrors) {
@@ -176,7 +179,8 @@ router.post('/Algorithm/Execute', function(req, res, next) {
   var similarityFile = address + "/similarity_files/" + data.similarityFile;
   var employeeFile = address + "/employee_files/" +  data.employeeFile;
   var chartFile = address + "/chart_files/" +  data.chartFile;
-  var cmd = 'java -jar ' + address+'/Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile;
+  var output = address + "/output/" + data.output;
+  var cmd = 'java -jar ' + address+'/Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile + ' ' + output;
   console.log(cmd);
   var result;
   //console.log(cmd);
@@ -728,11 +732,11 @@ router.post('/AddOfficeEmployee',function(req, res, next) {
         var officeID = data.officeID;
         queries.addEmployee(dbconnect, employee, function (err) {
           if (err) {
-            res.json(apiError.queryError("500", err.toString(), data));
+            return res.json(apiError.queryError("500", err.toString(), data));
           } else {
             queries.getUser(dbconnect, {email: data.email}, function(err, results) {
               if (err) {
-                res.json(apiError.queryError("500", err.toString(), data));
+                return res.json(apiError.queryError("500", err.toString(), data));
               } else {
                 var employeeID = results[0].employeeID;
                 var adder = {
