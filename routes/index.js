@@ -3,11 +3,11 @@ var router = express.Router();
 var env = require('../env');
 var path = require('path');
 var jwt    = require('jsonwebtoken');
-var apiResponse = require('../database/api_response');
+var apiResponse = require('../database/api_responses/api_response');
 
 /************** Modules for Database **************/
 var mysql = require('mysql');
-var render_queries = require('../database/backendtest');
+var render_queries = require('../database/test/backendtest');
 var connection  = require('express-myconnection');
 
 /************** Connect to MySQL **************/

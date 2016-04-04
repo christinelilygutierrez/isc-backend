@@ -53,7 +53,7 @@ exports.useDatabase = function(connection){
      } else {
      }
   });
-}
+};
 
 // Login Queries
 exports.getUser = function(connection, user, callback){
@@ -311,8 +311,6 @@ exports.getLastCompany = function(connection, callback) {
   });
 };
 
-
-
 exports.addEmployee = function(connection, values, callback) {
   connection.query("INSERT INTO seating_lucid_agency.employee SET ?;", values, function(err, result) {
     if (err) {
@@ -492,6 +490,11 @@ exports.addToWhiteList = function(connection, values) {
 };
 
 exports.deleteCompany = function(connection, id) {
+  connection.query("DELETE FROM seating_lucid_agency.manages WHERE company_ID = ?;", id, function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
   connection.query("DELETE FROM seating_lucid_agency.owned_by WHERE IDforCompany = ?;", id, function(err, result) {
     if (err && env.logErrors) {
       console.log(err);
@@ -820,7 +823,6 @@ exports.deleteAllTeammatesForEmployee = function(connection, employeeID) {
     }
   });
 };
-
 
 exports.deleteEntireBlackListForEmployee = function(connection, employeeID) {
   connection.query("DELETE FROM seating_lucid_agency.employee_blacklist WHERE idemployee_blacklist = ?;", [employeeID], function(err, result) {
@@ -1241,7 +1243,6 @@ exports.getAllDesksForOneCluster = function(connection, clusterID, callback) {
     }
   });
 };
-
 
 exports.getAllDesksWithEmployees = function(connection, callback) {
   connection.query('SELECT E.employeeID, E.firstName, D.deskID FROM seating_lucid_agency.employee as E, seating_lucid_agency.desk as D, seating_lucid_agency.sits_at as S WHERE E.employeeID = S.IDemployee AND S.IDdesk = D.deskID;', function(err, result) {
@@ -1728,7 +1729,6 @@ exports.updateEmployeeProfileImage = function(connection, data) {
     }
   });
 };
-
 
 /****Email Queries***/
 exports.reminderUpdateEmail = function(connection, callback) {

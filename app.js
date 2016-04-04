@@ -10,9 +10,8 @@ var app = express();
 var favicon = require('serve-favicon');
 var logger = require('morgan');
 var path = require('path');
-var queries = require('./database/queries');
+var queries = require('./database/all_queries');
 var routes = require('./routes/index');
-var users = require('./routes/users');
 var session = require('express-session');
 
 /**************** Database Connection ****************/
@@ -70,7 +69,6 @@ app.all('*', function(req, res, next) {
 // Use the router for the webpages
 app.use('/', routes);
 app.use('/api', api_route);
-//app.use('/users', users);
 
 /************** Execute Email Jobs **************/
 email.emailJobs();
@@ -274,7 +272,7 @@ function pluckByID(inArr, ID)
 
 
 function callTeam(ID1, ID2, score, total, officeID){
-  
+
   queries.getAllTeammatesForOneEmployee(dbconnect, ID1, function(err, data1) {
 
     queries.getAllTeammatesForOneEmployee(dbconnect, ID2, function(err, data2) {
@@ -289,7 +287,7 @@ function callTeam(ID1, ID2, score, total, officeID){
       callBlackList(ID1, ID2, score, total, officeID);
 
     });
-    
+
   });
 
 
@@ -310,17 +308,17 @@ function callBlackList(ID1, ID2, score, total, officeID){
       }
       callWhiteList(ID1, ID2, score, total, officeID);
     });
-    
+
   });
 
 
 }
-  
+
 function callWhiteList(ID1,ID2, score, total, officeID){
-  
+
 
   queries.getAllWhitelistEmployeesForOneEmployee(dbconnect, ID1, function(err, data1) {
-    
+
     queries.getAllWhitelistEmployeesForOneEmployee(dbconnect, ID2, function(err, data2) {
 
       if(pluckByID(data1, ID2) || pluckByID(data2, ID1)){
@@ -366,7 +364,7 @@ function callWhiteList(ID1,ID2, score, total, officeID){
 //});
 
 var employeeSimilarity = new cronJob( '*/15 * * * *', function(){
-  
+
 
   queries.getAllOffices(dbconnect, function(err, data) {
       var offices=data;
@@ -423,7 +421,7 @@ var employeeSimilarity = new cronJob( '*/15 * * * *', function(){
                     score+=10-Math.abs(emp1.restroomUsage-emp1.restroomUsage);
 
                     //
-                    //Noise 
+                    //Noise
                     //
                     score+=10-Math.abs(emp1.noisePreference-emp2.noisePreference);
 
@@ -439,12 +437,12 @@ var employeeSimilarity = new cronJob( '*/15 * * * *', function(){
               });
             });
           }
-        
+
         });
       });
     });
 
-  
+
 
 },  null, true);
 

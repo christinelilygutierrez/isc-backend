@@ -1,5 +1,5 @@
-var apiError = require('../database/api_errors');
-var apiSuccess = require('../database/api_successes');
+var apiError = require('../database/api_responses/api_errors');
+var apiSuccess = require('../database/api_responses/api_successes');
 var bcrypt = require('bcrypt');
 var csvParser = require('csv-parse');
 var env = require('../env');
@@ -10,7 +10,9 @@ var jwt = require('jsonwebtoken');
 var moment = require('moment');
 var path = require('path');
 var postmark = require("postmark");
-var queries = require('../database/queries');
+//var queries = require('../database/query/queries');
+//var all_queries = require('../database/all_queries');
+var queries = require('../database/all_queries');
 var router = express.Router();
 var uuid = require('node-uuid');
 var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
@@ -441,13 +443,13 @@ router.post('/AddCompany',function(req, res, next) {
         if (err) {
           return res.json(apiError.queryError("500", err.toString(), data));
         } else {
-          console.log("Company added!");
+          //console.log("Company added!");
           queries.getLastCompany(dbconnect, function(err, results) {
             if (err) {
               return res.json(apiError.queryError("500", err.toString(), data));
             } else {
-              console.log("Last company ID retrieved");
-              console.log(results);
+              //console.log("Last company ID retrieved");
+              //console.log(results);
               queries.addAllSuperadminToCompany(dbconnect, results[0].companyID);
             }
           });
@@ -1239,7 +1241,8 @@ router.post('/EditEmployeePreferences/:id', function(req, res) {
         if (err) {
           return res.json(apiError.queryError("500", err.toString(), result));
         } else {
-          if (result[0].result == 1) {
+          //console.log(result[0]);
+          if (result[0].RESULT == 1) {
             queries.editRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID}, ID);
           } else {
             queries.addRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID});
