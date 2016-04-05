@@ -328,11 +328,8 @@ function callWhiteList(ID1,ID2, score, total, officeID){
         emp2: ID2,
         score: score};
       pairScores.push(pushing);
-      console.log("Length: "+pairScores.length);
-      console.log("Total :"+total);
       if(pairScores.length === total){
-        console.log("FINAL");
-        console.log(pairScores);
+        console.log("Office "+officeID+" upadted similarity.");
         var fs=require('fs');
         fs.writeFile('seating_chart_algorithm/similarity_files/'+officeID+'_similarity.json', JSON.stringify(pairScores), function(err){
           if(err){
@@ -372,12 +369,9 @@ var employeeSimilarity = new cronJob( '*/15 * * * *', function(){
 
         queries.getAllEmployeesForOneOfficeConfidential(dbconnect, office.officeID, function(err, data) {
 
-          console.log("Office :"+office.officeID);
 
           emps = data;
 
-          console.log("Length: "+emps.length)
-          console.log("Total: "+((emps.length * (emps.length -1))/2));
           var total=((emps.length * (emps.length -1))/2);
           var good=false;
 
@@ -386,12 +380,8 @@ var employeeSimilarity = new cronJob( '*/15 * * * *', function(){
           for (var i = 0; i < emps.length; i++ )
           {
             var temp=emps[i].accountUpdated;
-            console.log(temp);
-            console.log((new Date));
             var sqldate=new Date(temp);
             var result=((new Date) - sqldate);
-            console.log(((new Date) - sqldate));
-            console.log(time>result);
             if (result < time)
             {
               good=true;
