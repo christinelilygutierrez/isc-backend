@@ -112,7 +112,7 @@ var dailyEmailJob = new cronJob( '57 16 * * *', function(){
   var postmark = require("postmark");
 
   // Example request
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   var email;
   queries.reminderUpdateEmail(dbconnect, function(err, data){
     if (err && env.logErrors) {
@@ -129,7 +129,7 @@ var dailyEmailJob = new cronJob( '57 16 * * *', function(){
         val = email[i];
         console.log(val.email);
         client.sendEmail({
-          "From": "djgraca@asu.edu",
+          "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": 'Please Update Your Preferences',
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
@@ -146,7 +146,7 @@ var fiveDayEmailJob = new cronJob( '57 16 * * *', function(){
   var postmark = require("postmark");
 
   // Example request
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   var email;
   queries.fiveDayOldAccounts(dbconnect, function(err, data){
     if (err && env.logErrors) {
@@ -163,7 +163,7 @@ var fiveDayEmailJob = new cronJob( '57 16 * * *', function(){
         val = email[i];
         console.log(val.email);
         client.sendEmail({
-          "From": "djgraca@asu.edu",
+          "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": 'Please Update Your Preferences',
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
@@ -181,7 +181,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
   var postmark = require("postmark");
 
   // Example request
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   var email;
   queries.tenDayOrOlderAccounts(dbconnect, function(err, data){
     if (err && env.logErrors) {
@@ -198,7 +198,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
         val = email[i];
         console.log(val.email);
         client.sendEmail({
-          "From": "djgraca@asu.edu",
+          "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": 'Please Update Your Preferences',
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
@@ -216,7 +216,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
   var postmark = require("postmark");
 
   // Example request
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   var email;
   queries.quarterlyUpdateEmail(dbconnect, function(err, data){
     if (err && env.logErrors) {
@@ -233,7 +233,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
         val = email[i];
         console.log(val.email);
         client.sendEmail({
-              "From": "djgraca@asu.edu",
+              "From": "info@lucidseat.com",
               "To": val.email,
               "Subject": "It's Been Awhile...",
               "TextBody": "Looks like you haven't updated your preferences in awhile!  If you need to update please login at DeskSeeker now!"

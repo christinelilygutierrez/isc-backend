@@ -2155,7 +2155,7 @@ router.post('/SendEmail',function(req, res, next) {
   //User Reasons: When added to update profile, then 5 days later remind them, after that every 10 days, then suggest update every 92 days
   // Example request
   var postmark = require("postmark");
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   if (emailData.reason ==='passwordUpdate') {
     queries.emailSuperAdmins(dbconnect, function(err, data) {
       if (err) {
@@ -2168,7 +2168,7 @@ router.post('/SendEmail',function(req, res, next) {
         for (var i in admin) {
           val = admin[i];
           client.sendEmail({
-            "From": "djgraca@asu.edu",
+            "From": "info@lucidseat.com",
             "To": val.email,
             "Subject": 'Someone has Updated their Password',
             "TextBody": emailData.email+" has updated their password."
@@ -2189,7 +2189,7 @@ router.post('/SendEmail',function(req, res, next) {
         for (var i in admin) {
           val = admin[i];
           client.sendEmail({
-            "From": "djgraca@asu.edu",
+            "From": "info@lucidseat.com",
             "To": val.email,
             "Subject": 'Someone has Requested a Password Reset',
             "TextBody": emailData.email+" has requested a password reset and has been given a temporary password."
@@ -2199,7 +2199,7 @@ router.post('/SendEmail',function(req, res, next) {
     });
     //email user about it
     client.sendEmail({
-      "From": "djgraca@asu.edu",
+      "From": "info@lucidseat.com",
       "To": emailData.email,
       "Subject": 'Password Reset Requested!',
       "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+emailData.token
@@ -2218,7 +2218,7 @@ router.post('/SendEmail',function(req, res, next) {
           val = admin[i];
           //console.log(val.email);
           client.sendEmail({
-            "From": "djgraca@asu.edu",
+            "From": "info@lucidseat.com",
             "To": val.email,
             "Subject": 'Seating Chart Update Recommended',
             "TextBody": "Employee(s) have updated their preferences and the Seating Chart recommendation may have changed."
@@ -2230,7 +2230,7 @@ router.post('/SendEmail',function(req, res, next) {
     //console.log("got here");
     //console.log(emailData.to);
     client.sendEmail({
-      "From": "djgraca@asu.edu",
+      "From": "info@lucidseat.com",
       "To": emailData.to,
       "Subject": 'Welcome to DeskSeeker!',
       "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password
