@@ -112,7 +112,7 @@ var dailyEmailJob = new cronJob( '57 16 * * *', function(){
   var postmark = require("postmark");
 
   // Example request
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   var email;
   queries.reminderUpdateEmail(dbconnect, function(err, data){
     if (err && env.logErrors) {
@@ -129,7 +129,7 @@ var dailyEmailJob = new cronJob( '57 16 * * *', function(){
         val = email[i];
         console.log(val.email);
         client.sendEmail({
-          "From": "djgraca@asu.edu",
+          "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": 'Please Update Your Preferences',
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
@@ -146,7 +146,7 @@ var fiveDayEmailJob = new cronJob( '57 16 * * *', function(){
   var postmark = require("postmark");
 
   // Example request
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   var email;
   queries.fiveDayOldAccounts(dbconnect, function(err, data){
     if (err && env.logErrors) {
@@ -163,7 +163,7 @@ var fiveDayEmailJob = new cronJob( '57 16 * * *', function(){
         val = email[i];
         console.log(val.email);
         client.sendEmail({
-          "From": "djgraca@asu.edu",
+          "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": 'Please Update Your Preferences',
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
@@ -181,7 +181,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
   var postmark = require("postmark");
 
   // Example request
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   var email;
   queries.tenDayOrOlderAccounts(dbconnect, function(err, data){
     if (err && env.logErrors) {
@@ -198,7 +198,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
         val = email[i];
         console.log(val.email);
         client.sendEmail({
-          "From": "djgraca@asu.edu",
+          "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": 'Please Update Your Preferences',
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
@@ -216,7 +216,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
   var postmark = require("postmark");
 
   // Example request
-  var client = new postmark.Client("9dfd669c-5911-4411-991b-5dbebb620c88");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   var email;
   queries.quarterlyUpdateEmail(dbconnect, function(err, data){
     if (err && env.logErrors) {
@@ -233,7 +233,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
         val = email[i];
         console.log(val.email);
         client.sendEmail({
-              "From": "djgraca@asu.edu",
+              "From": "info@lucidseat.com",
               "To": val.email,
               "Subject": "It's Been Awhile...",
               "TextBody": "Looks like you haven't updated your preferences in awhile!  If you need to update please login at DeskSeeker now!"
@@ -328,11 +328,8 @@ function callWhiteList(ID1,ID2, score, total, officeID){
         emp2: ID2,
         score: score};
       pairScores.push(pushing);
-      console.log("Length: "+pairScores.length);
-      console.log("Total :"+total);
       if(pairScores.length === total){
-        console.log("FINAL");
-        console.log(pairScores);
+        console.log("Office "+officeID+" upadted similarity.");
         var fs=require('fs');
         fs.writeFile('seating_chart_algorithm/similarity_files/'+officeID+'_similarity.json', JSON.stringify(pairScores), function(err){
           if(err){
@@ -372,12 +369,9 @@ var employeeSimilarity = new cronJob( '*/15 * * * *', function(){
 
         queries.getAllEmployeesForOneOfficeConfidential(dbconnect, office.officeID, function(err, data) {
 
-          console.log("Office :"+office.officeID);
 
           emps = data;
 
-          console.log("Length: "+emps.length)
-          console.log("Total: "+((emps.length * (emps.length -1))/2));
           var total=((emps.length * (emps.length -1))/2);
           var good=false;
 
@@ -386,12 +380,8 @@ var employeeSimilarity = new cronJob( '*/15 * * * *', function(){
           for (var i = 0; i < emps.length; i++ )
           {
             var temp=emps[i].accountUpdated;
-            console.log(temp);
-            console.log((new Date));
             var sqldate=new Date(temp);
             var result=((new Date) - sqldate);
-            console.log(((new Date) - sqldate));
-            console.log(time>result);
             if (result < time)
             {
               good=true;
@@ -441,18 +431,7 @@ var employeeSimilarity = new cronJob( '*/15 * * * *', function(){
         });
       });
     });
-
-
-
 },  null, true);
-
-
-
-
-
-
-
-
 
 // Export the app module
 module.exports = app;
