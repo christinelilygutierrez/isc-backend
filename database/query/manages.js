@@ -66,6 +66,26 @@ exports.addAllSuperadminToCompany = function(connection, company_ID) {
 };
 
 exports.deleteAdminToCompany = function(connection, adminID, companyID) {
+  connection.query("DELETE FROM seating_lucid_agency.employee_blacklist WHERE idemployee_blacklist = ?;", [adminID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_whitelist WHERE idemployee_whitelist = ?;", [adminID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_teammates WHERE idemployee_teammates = ?;", [adminID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.works_at WHERE employeeKey = ?;", [adminID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
   connection.query("DELETE FROM seating_lucid_agency.manages WHERE admin_ID = ? AND company_ID;", [adminID, companyID], function(err, result) {
     if (err && env.logErrors) {
       console.log(err);
@@ -76,6 +96,26 @@ exports.deleteAdminToCompany = function(connection, adminID, companyID) {
 };
 
 exports.editAdminToCompany = function(connection, values, adminID, companyID) {
+  connection.query("DELETE FROM seating_lucid_agency.employee_blacklist WHERE idemployee_blacklist = ?;", [adminID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_whitelist WHERE idemployee_whitelist = ?;", [adminID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_teammates WHERE idemployee_teammates = ?;", [adminID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.works_at WHERE employeeKey = ?;", [adminID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
   connection.query("UPDATE seating_lucid_agency.manages SET ? WHERE admin_ID = ? AND company_ID;", [values, adminID, companyID], function(err, result) {
     if (err && env.logErrors) {
       console.log(err);

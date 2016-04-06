@@ -12,6 +12,21 @@ exports.addEmployeeToOffice = function(connection, values) {
 };
 
 exports.deleteEmployeeFromOffice = function(connection, employeeID) {
+  connection.query("DELETE FROM seating_lucid_agency.employee_blacklist WHERE idemployee_blacklist = ?;", [employeeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_whitelist WHERE idemployee_whitelist = ?;", [employeeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_teammates WHERE idemployee_teammates = ?;", [employeeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
   connection.query("DELETE FROM seating_lucid_agency.works_at WHERE employeeKey = ?;", [employeeID], function(err, result) {
     if (err && env.logErrors) {
       console.log(err);
@@ -22,6 +37,21 @@ exports.deleteEmployeeFromOffice = function(connection, employeeID) {
 };
 
 exports.deleteEmployeeWorksAt = function(connection, employeeID, officeID) {
+  connection.query("DELETE FROM seating_lucid_agency.employee_blacklist WHERE idemployee_blacklist = ?;", [employeeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_whitelist WHERE idemployee_whitelist = ?;", [employeeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_teammates WHERE idemployee_teammates = ?;", [employeeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
   connection.query("DELETE FROM seating_lucid_agency.works_at WHERE employeeKey = ? AND officeKey = ? ;", [employeeID, officeID], function(err, result) {
     if (err && env.logErrors) {
       console.log(err);
@@ -32,6 +62,21 @@ exports.deleteEmployeeWorksAt = function(connection, employeeID, officeID) {
 };
 
 exports.editEmployeeToOffice = function(connection, values, employeeID, officeID) {
+  connection.query("DELETE FROM seating_lucid_agency.employee_blacklist WHERE idemployee_blacklist = ?;", [employeeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_whitelist WHERE idemployee_whitelist = ?;", [employeeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.employee_teammates WHERE idemployee_teammates = ?;", [employeeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
   connection.query("UPDATE seating_lucid_agency.works_at SET ? WHERE employeeKey = ? AND officeKey = ?;", [values, employeeID, officeID], function(err, result) {
     if (err && env.logErrors) {
       console.log(err);
