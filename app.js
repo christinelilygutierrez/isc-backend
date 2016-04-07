@@ -223,7 +223,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
     }
   });
 },  null, true);
-similarity.Start();
+
 var employeeSimilarity = new cronJob( '*/15 * * * *', function() {
   similarity.Start();
 },  null, true);
