@@ -2211,7 +2211,7 @@ router.post('/SendEmail',function(req, res, next) {
         res.json(apiError.queryError("500", err.toString(), data));
       } else if (env.logQueries) {
         //console.log("The list of employees : ", data);
-        email=data;
+        email = data;
       } else {
         admin=JSON.parse(JSON.stringify(data));
         for (var i in admin) {

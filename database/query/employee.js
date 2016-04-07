@@ -187,6 +187,16 @@ exports.editEmployee = function(connection, values, id) {
   });
 };
 
+exports.editEmployeeUpdatedForOffice = function(connection, values, officeID) {
+  connection.query("Update seating_lucid_agency.office SET ? WHERE officeID = ?;", [values, officeID], function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Employee Updated for Office");
+    }
+  });
+};
+
 exports.editTeammate = function(connection, values, employeeID, teammateID) {
   connection.query("UPDATE seating_lucid_agency.employee_teammates SET ? WHERE idemployee_teammates = ? AND employee_teammate_id = ?;", [values, employeeID, teammateID], function(err, result) {
     if (err && env.logErrors) {

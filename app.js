@@ -123,10 +123,7 @@ var dailyEmailJob = new cronJob( '57 16 * * *', function(){
       email=data;
     } else {
       email=JSON.parse(JSON.stringify(data));
-
-
       for (var i in email) {
-
         val = email[i];
         console.log(val.email);
         client.sendEmail({
@@ -136,8 +133,6 @@ var dailyEmailJob = new cronJob( '57 16 * * *', function(){
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
         });
       }
-
-
     }
   });
 },  null, true);
@@ -157,10 +152,7 @@ var fiveDayEmailJob = new cronJob( '57 16 * * *', function(){
       email=data;
     } else {
       email=JSON.parse(JSON.stringify(data));
-
-
       for (var i in email) {
-
         val = email[i];
         console.log(val.email);
         client.sendEmail({
@@ -170,12 +162,9 @@ var fiveDayEmailJob = new cronJob( '57 16 * * *', function(){
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
         });
       }
-
-
     }
   });
 },  null, true);
-
 
 var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
   // Require
@@ -192,8 +181,6 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
       email=data;
     } else {
       email=JSON.parse(JSON.stringify(data));
-
-
       for (var i in email) {
 
         val = email[i];
@@ -205,13 +192,9 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
           "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
         });
       }
-
-
     }
   });
 },  null, true);
-
-
   var quarterlyEmailJob = new cronJob( '30 03 01 */3 *', function(){
   // Require
   var postmark = require("postmark");
@@ -227,10 +210,7 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
       email=data;
     } else {
       email=JSON.parse(JSON.stringify(data));
-
-
       for (var i in email) {
-
         val = email[i];
         console.log(val.email);
         client.sendEmail({
@@ -240,24 +220,12 @@ var tenDayEmailJob = new cronJob( '57 16 * * *', function(){
               "TextBody": "Looks like you haven't updated your preferences in awhile!  If you need to update please login at DeskSeeker now!"
           });
       }
-
-
     }
   });
-
-
 },  null, true);
-
-
-
 similarity.Start();
-
-
-
-var employeeSimilarity = new cronJob( '*/15 * * * *', function(){
-
+var employeeSimilarity = new cronJob( '*/15 * * * *', function() {
   similarity.Start();
-
 },  null, true);
 
 // Export the app module
