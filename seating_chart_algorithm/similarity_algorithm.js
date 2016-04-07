@@ -54,7 +54,7 @@ function callWhiteList(ID1,ID2, score, total, officeID) {
         score: score};
         pairScores.push(pushing);
         if (pairScores.length === total) {
-          console.log("Office "+officeID+" upadted similarity.");
+          console.log("Office "+officeID+" updated similarity.");
           var fs = require('fs');
           fs.writeFile('seating_chart_algorithm/similarity_files/'+officeID+'_similarity.json', JSON.stringify(pairScores), function(err) {
             if (err) {
