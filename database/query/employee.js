@@ -72,6 +72,11 @@ exports.addToWhiteList = function(connection, values) {
 };
 
 exports.deleteEmployee = function(connection, id) {
+  connection.query("DELETE FROM seating_lucid_agency.password_reset WHERE employee_ID = ?;", id, function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    }
+  });
   connection.query("DELETE FROM seating_lucid_agency.manages WHERE admin_ID = ?;", id, function(err, result) {
     if (err && env.logErrors) {
       console.log(err);
