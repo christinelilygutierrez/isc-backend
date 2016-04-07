@@ -1,12 +1,15 @@
+var env = require('../env');
 var cronJob = require('cron').CronJob;
 var postmark = require("postmark");
 var similarity = require('./../seating_chart_algorithm/similarity_algorithm');
+var queries = require('../database/all_queries');
+var dbconnect = queries.getConnection();
 
 exports.deletePasswordResetTokens = new cronJob( '00 12 * * *', function(){
   queries.deletePasswordResetTimeout(dbconnect);
 }, null, true);
 
-exports.dailyEmailJob = new cronJob( '57 16 * * *', function(){
+exports.dailyEmailJob = new cronJob( '38 22 * * *', function(){
   // Require
   var postmark = require("postmark");
 
