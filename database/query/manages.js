@@ -54,7 +54,7 @@ exports.addSuperadminToAllCompanies = function(connection, admin_ID) {
 exports.addAllSuperadminToCompany = function(connection, company_ID) {
   getSuperadminIDs(connection, function(err, results) {
     for (var item in results) {
-      console.log(results[item]);
+      //console.log(results[item]);
       connection.query("INSERT INTO seating_lucid_agency.manages SET ?;", {admin_ID: results[item].employeeID, company_ID: company_ID } , function(err, exe) {
         if (err) {
           console.log(err);

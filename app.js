@@ -47,8 +47,6 @@ app.use(function (error, req, res, next){
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-
-
 /************** Static files like js, CSS, images **************/
 // Reference all materials in the public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -77,7 +75,6 @@ email.dailyEmailJob;
 email.fiveDayEmailJob;
 email.tenDayEmailJob;
 email.quarterlyEmailJob;;
-similarity.Start();
 email.employeeSimilarity;
 
 /************** 404 and Error Handlers **************/

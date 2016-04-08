@@ -91,109 +91,6 @@ dbconnect.connect(function(err) {
   }
 });
 
-/**************** File Upload ****************/
-var multer  = require('multer');
-// File Upload
-var storage = multer.diskStorage({
-  destination: function (req, file, callback) {
-    callback(null, 'public/documents');
-  },
-  filename: function (req, file, callback) {
-    //get filename and change it to a new name using a uuid
-    //for example the following file in public/documents folder with fileName
-    //367db834-5dfc-43c3-971e-c7cad28c36b91454213265978.jpg
-    //https://localhost/documents/367db834-5dfc-43c3-971e-c7cad28c36b91454213265978.jpg
-    var originalname =file.originalname;
-    var fileExtension = originalname.slice((originalname.lastIndexOf(".") - 1 >>> 0) + 2);
-    var fileName = uuid.v4();
-    var newFileName = fileName + Date.now() + '.'+ fileExtension;
-    callback(null, newFileName);
-  }
-});
-var upload = multer({ storage: storage });
-
-router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
-  var file = req.file;
-  var data = JSON.parse(JSON.stringify(req.body));
-  var adder = {
-    pictureAddress: file.filename,
-    employeeID: data.employeeID
-  };
-
-  // Update Employee Profile Image
-  queries.updateEmployeeProfileImage(dbconnect, adder);
-  res.status(204).end();
-});
-
-router.get('/Media/DefaultImage/', function (req, res, next) {
-  var address;
-
-  address = path.join(__dirname+"./../public/documents/default.jpg");
-  console.log(address);
-  res.sendFile(address);
-});
-
-router.get('/Media/ProfileImage/:id', function (req, res, next) {
-  var employeeID = req.params.id;
-  var address;
-
-  if (!isInt(employeeID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.getEmployeeProfileImage(dbconnect, employeeID, function(err, result) {
-    if (err) {
-      res.json(apiError.errors("500","Error with get employee profile image query in database"));
-    } else {
-      address = result[0].pictureAddress;
-      address = path.join(__dirname+"./../public/documents/" + address);
-      console.log(address);
-      res.sendFile(address);
-    }
-  });
-});
-
-router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
-  var file = req.file;
-  var rs = fs.createReadStream(file.path);
-  parser = csvParser({columns: true}, function(err, employees) {
-    if (err) {
-      res.json(apiError.errors("400","Error with parsing JSON"));
-    } else {
-      var values=[];
-      for( var i in employees) {
-        //gets the employee
-        employee= JSON.parse(JSON.stringify(employees[i]));
-        //converts json to array
-        var arr = employeePropertiesToArray(employee);
-        values.push(arr);
-      }
-    }
-  });
-  rs.pipe(parser);
-  //console.log(file.filename);
-  res.status(204).end();
-});
-
-/**************** Algorithm Call *****************/
-router.post('/Algorithm/Execute', function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var address = path.join(__dirname + "./../seating_chart_algorithm");
-  var similarityFile = address + "/similarity_files/" + data.similarityFile;
-  var employeeFile = address + "/employee_files/" +  data.employeeFile;
-  var chartFile = address + "/chart_files/" +  data.chartFile;
-  var output = address + "/output/" + data.output;
-  var cmd = 'java -jar ' + address+'/Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile + ' ' + output;
-  console.log(cmd);
-  var result;
-  //console.log(cmd);
-  exec(cmd, function(error, stdout, stderr) {
-    //console.log(stdout);
-    result = readTextFile(address + 'output.json');
-    console.log(result);
-  });
-  res.status(200).end();
-});
-
 /**************** Login Implementationn ****************/
 // Create a token if an employee signs in
 router.post('/Authenticate', function(req, res) {
@@ -265,167 +162,136 @@ router.get('/Verify/', function(req, res, next) {
   }
 });
 
-// Prevents access to page unless token is present
-/*router.use(function(req, res, next) {
-var token = req.body.token || req.query.token || req.headers['x-access-token'];
-// decode token
-if (token) {
-// verifies secret and checks exp
-jwt.verify(token, 'test', function(err, decoded) {
-if (err) {
-return res.json({ success: false, message: 'Failed to authenticate token.' });
-} else {
-// if everything is good, save to request for use in other routes
-req.decoded = decoded;
-
-console.log(req.decoded);
-req.session.employee = req.decoded;
-next();
-}
-});
-} else {
-// if there is no token
-// return an error
-return res.status(403).send({
-success: false,
-message: 'No token provided.'
-});
-}
-});*/
-
 router.get('/Authenticate', function(req, res) {
   res.json(apiError.errors("403","Access denied"));
 });
 
-/**************** Initialization Checks ****************/
-router.get('/ExistsCompany',function(req, res, next) {
-  queries.existsCompany(dbconnect, function(err, data) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Is there a company? 0 means no and 1 means yes: " , data);
-      res.json(data);
-    } else {
-      res.json(data);
-    }
-  });
+/**************** Non-Confidential ****************/
+router.get('/Media/DefaultImage/', function (req, res, next) {
+  var address;
+
+  address = path.join(__dirname+"./../public/documents/default.jpg");
+  //console.log(address);
+  res.sendFile(address);
 });
 
-router.get('/ExistsCompanyForAdmin/:id',function(req, res, next) {
-  var ID = req.params.id;
+router.get('/Media/ProfileImage/:id', function (req, res, next) {
+  var employeeID = req.params.id;
+  var address;
 
-  if (!isInt(ID)) {
+  if (!isInt(employeeID)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
   }
-  queries.existsCompanyForAdmin(dbconnect, ID, function(err, data) {
+  queries.getEmployeeProfileImage(dbconnect, employeeID, function(err, result) {
     if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Is there a company for admin? 0 means no and 1 means yes: " , data);
-      res.json(data);
+      res.json(apiError.errors("500","Error with get employee profile image query in database"));
     } else {
-      res.json(data);
+      address = result[0].pictureAddress;
+      address = path.join(__dirname+"./../public/documents/" + address);
+      //console.log(address);
+      res.sendFile(address);
     }
   });
 });
 
-router.get('/ExistsEmployee/:id',function(req, res, next) {
-  var ID = req.params.id;
-
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
+/**************** MUST HAVE CREDENTIALS FOR THE FOLLOWING HTTP METHODS ****************/
+router.use(function(req, res, next) {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  // decode token
+  if (token) {
+    // verifies secret and checks exp
+    jwt.verify(token, 'test', function(err, decoded) {
+      if (err) {
+        return res.status(403).send(apiError.successError(false, 'Failed to authenticate token.'));
+      } else {
+        // if everything is good, save to request for use in other routes
+        req.decoded = decoded;
+        //console.log(req.decoded);
+        req.session.employee = req.decoded;
+        next();
+      }
+    });
+  } else {
+    // if there is no token
+    // return an error
+    return res.status(403).send(apiError.successError(false, 'No token provided.'));
   }
-  queries.existsEmployee(dbconnect, ID, function(err, data) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Is there an employee? 0 means no and 1 means yes: " , data);
-      res.json(data);
-    } else {
-      res.json(data);
-    }
-  });
 });
 
-router.get('/ExistsEmployeeInOffice/:id',function(req, res, next) {
-  var ID = req.params.id;
-
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
+/**************** File Upload ****************/
+var multer  = require('multer');
+// File Upload
+var storage = multer.diskStorage({
+  destination: function (req, file, callback) {
+    callback(null, 'public/documents');
+  },
+  filename: function (req, file, callback) {
+    //get filename and change it to a new name using a uuid
+    //for example the following file in public/documents folder with fileName
+    //367db834-5dfc-43c3-971e-c7cad28c36b91454213265978.jpg
+    //https://localhost/documents/367db834-5dfc-43c3-971e-c7cad28c36b91454213265978.jpg
+    var originalname =file.originalname;
+    var fileExtension = originalname.slice((originalname.lastIndexOf(".") - 1 >>> 0) + 2);
+    var fileName = uuid.v4();
+    var newFileName = fileName + Date.now() + '.'+ fileExtension;
+    callback(null, newFileName);
   }
-  queries.existsEmployeeInOffice(dbconnect, ID, function(err, data) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Is there the employee in office? 0 means no and 1 means yes: " , data);
-      res.json(data);
-    } else {
-      res.json(data);
-    }
-  });
+});
+var upload = multer({ storage: storage });
+
+router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
+  var file = req.file;
+  var data = JSON.parse(JSON.stringify(req.body));
+  var adder = {
+    pictureAddress: file.filename,
+    employeeID: data.employeeID
+  };
+
+  // Update Employee Profile Image
+  queries.updateEmployeeProfileImage(dbconnect, adder);
+  res.status(204).end();
 });
 
-router.get('/ExistsOffice',function(req, res, next) {
-  queries.existsOffice(dbconnect, function(err, data) {
+router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
+  var file = req.file;
+  var rs = fs.createReadStream(file.path);
+  parser = csvParser({columns: true}, function(err, employees) {
     if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Is there an office? 0 means no and 1 means yes: " , data);
-      res.json(data);
+      res.json(apiError.errors("400","Error with parsing JSON"));
     } else {
-      res.json(data);
+      var values=[];
+      for( var i in employees) {
+        //gets the employee
+        employee= JSON.parse(JSON.stringify(employees[i]));
+        //converts json to array
+        var arr = employeePropertiesToArray(employee);
+        values.push(arr);
+      }
     }
   });
+  rs.pipe(parser);
+  //console.log(file.filename);
+  res.status(204).end();
 });
 
-router.get('/ExistsOfficeForAdmin/:id',function(req, res, next) {
-  var ID = req.params.id;
-
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.existsOfficeForAdmin(dbconnect, ID, function(err, data) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Is there an office for admin? 0 means no and 1 means yes: " , data);
-      res.json(data);
-    } else {
-      res.json(data);
-    }
+/**************** Algorithm Call *****************/
+router.post('/Algorithm/Execute', function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var address = path.join(__dirname + "./../seating_chart_algorithm");
+  var similarityFile = address + "/similarity_files/" + data.similarityFile;
+  var employeeFile = address + "/employee_files/" +  data.employeeFile;
+  var chartFile = address + "/chart_files/" +  data.chartFile;
+  var output = address + "/output/" + data.output;
+  var cmd = 'java -jar ' + address+'/Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile + ' ' + output;
+  //console.log(cmd);
+  var result;
+  //console.log(cmd);
+  exec(cmd, function(error, stdout, stderr) {
+    //console.log(stdout);
+    result = readTextFile(address + 'output.json');
+    console.log(result);
   });
-});
-
-router.get('/ExistsSuperadminWithOffice',function(req, res, next) {
-  queries.existsSuperadminWithOffice(dbconnect, function(err, data) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Is there a superadmin associated with an office? 0 means no and 1 means yes: " , data);
-      res.json(data);
-    } else {
-      res.json(data);
-    }
-  });
-});
-
-router.get('/ExistsTemperatureRange',function(req, res, next) {
-  queries.existsTemperatureRange(dbconnect, function(err, data) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Is there a temperature range? 0 means no and 1 means yes: " , data);
-      res.json(data);
-    } else {
-      res.json(data);
-    }
-  });
-});
-
-/**************** RESTful API ****************/
-// GET /api page
-router.get('/', function(req, res, next) {
-  res.redirect('/');
+  res.status(200).end();
 });
 
 /**************** Add Queries ****************/
@@ -459,7 +325,6 @@ router.post('/AddCompany',function(req, res, next) {
   });
   res.json(apiSuccess.successQuery(true, "Company added to seating_lucid_agency"));
 });
-
 
 router.post('/AddCluster',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
@@ -496,7 +361,6 @@ router.post('/AddDesk',function(req, res, next) {
   });
   res.json(apiSuccess.successQuery(true, "Desk added to seating_lucid_agency"));
 });
-
 
 router.post('/AddEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
@@ -1298,6 +1162,319 @@ router.post('/EditTemperatureRange/:id',function(req, res, next) {
   res.json(apiSuccess.successQuery(true, "Temperature range edited in seating_lucid_agency"));
 });
 
+router.post('/UpdatePassword',function(req, res) {
+  var passwords = JSON.parse(JSON.stringify(req.body));
+
+  queries.getOneEmployeeConfidential(dbconnect, passwords.employeeID, function(err, data) {
+    var query = JSON.parse(JSON.stringify(data));
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    }
+    else {
+      bcrypt.genSalt(10, function(err, salt) {
+        if (bcrypt.compareSync(passwords.oldPassword, query[0].password)) {
+          if (passwords.password===passwords.password2) {
+            bcrypt.genSalt(10, function(err, salt) {
+              bcrypt.hash(passwords.password, salt, function(err, hash) {
+                var employee = {
+                  firstName : query[0].firstName,
+                  lastName : query[0].lastName,
+                  email : query[0].email,
+                  password : hash,
+                  department : query[0].department,
+                  title : query[0].title,
+                  restroomUsage : query[0].restroomUsage,
+                  noisePreference : query[0].noisePreference,
+                  outOfDesk : query[0].outOfDesk,
+                  pictureAddress : query[0].pictureAddress,
+                  permissionLevel : query[0].permissionLevel
+                };
+                queries.editEmployee(dbconnect, employee, passwords.employeeID);
+                res.json(apiSuccess.successQuery(true, "Password is updated in seating_lucid_agency"));
+              });
+            });
+          }
+          else {
+            res.json(apiError.successError(false, 'New passwords do not match.'));
+          }
+        }
+        else {
+          res.json(apiError.successError(false, 'Invalid: old password'));
+        }
+      });
+    }
+  });
+});
+
+router.post('/PasswordResetEmailCheck', function(req, res) {
+  var user = JSON.parse(JSON.stringify(req.body));
+  queries.getUser(dbconnect, user, function(err, data) {
+    console.log(data);
+    if (data.length>0) {
+      res.json({ success: true, message: 'User found.', data });
+    }
+    else {
+      res.json({ success: false, message: 'No such user.' });
+    }
+  });
+});
+
+router.post('/PasswordResetUpdate', function(req, res) {
+  var user = JSON.parse(JSON.stringify(req.body));
+  console.log(user);
+  queries.getOneEmployeeConfidential(dbconnect, user.employeeID, function(err, data) {
+    var query = JSON.parse(JSON.stringify(data));
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    }
+    else {
+      bcrypt.genSalt(10, function(err, salt) {
+        bcrypt.hash(user.password, salt, function(err, hash) {
+          var employee = {
+            firstName : query[0].firstName,
+            lastName : query[0].lastName,
+            email : query[0].email,
+            password : hash,
+            department : query[0].department,
+            title : query[0].title,
+            restroomUsage : query[0].restroomUsage,
+            noisePreference : query[0].noisePreference,
+            outOfDesk : query[0].outOfDesk,
+            pictureAddress : query[0].pictureAddress,
+            permissionLevel : query[0].permissionLevel
+          };
+          queries.editEmployee(dbconnect, employee, user.employeeID);
+          res.json(apiSuccess.successQuery(true, "Password is updated in seating_lucid_agency"));
+        });
+      });
+    }
+  });
+});
+
+/**************** E-mail API ****************/
+router.post('/SendEmail',function(req, res, next) {
+  var emailData = JSON.parse(JSON.stringify(req.body));
+  //console.log(emailData);
+  //Admin Reasons: Password update, password reset request, employee preferences changed (daily)
+  //User Reasons: When added to update profile, then 5 days later remind them, after that every 10 days, then suggest update every 92 days
+  // Example request
+  var postmark = require("postmark");
+  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
+  if (emailData.reason ==='passwordUpdate') {
+    queries.emailSuperAdmins(dbconnect, function(err, data) {
+      if (err) {
+        res.json(apiError.queryError("500", err.toString(), data));
+      } else if (env.logQueries) {
+        //console.log("The list of employees : ", data);
+        email=data;
+      } else {
+        admin=JSON.parse(JSON.stringify(data));
+        for (var i in admin) {
+          val = admin[i];
+          client.sendEmail({
+            "From": "info@lucidseat.com",
+            "To": val.email,
+            "Subject": 'Someone has Updated their Password',
+            "TextBody": emailData.email+" has updated their password."
+          });
+        }
+      }
+    });
+  } else if (emailData.reason ==='passwordReset') {
+    //email Admin about it
+    queries.emailSuperAdmins(dbconnect, function(err, data) {
+      if (err) {
+        res.json(apiError.queryError("500", err.toString(), data));
+      } else if (env.logQueries) {
+        //console.log("The list of employees : ", data);
+        email=data;
+      } else {
+        admin=JSON.parse(JSON.stringify(data));
+        for (var i in admin) {
+          val = admin[i];
+          client.sendEmail({
+            "From": "info@lucidseat.com",
+            "To": val.email,
+            "Subject": 'Someone has Requested a Password Reset',
+            "TextBody": emailData.email+" has requested a password reset and has been given a temporary password."
+          });
+        }
+      }
+    });
+    //email user about it
+    client.sendEmail({
+      "From": "info@lucidseat.com",
+      "To": emailData.email,
+      "Subject": 'Password Reset Requested!',
+      "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+emailData.token
+    });
+
+  } else if (emailData.reason ==='employeeUpdate') {
+    queries.emailSuperAdmins(dbconnect, function(err, data) {
+      if (err) {
+        res.json(apiError.queryError("500", err.toString(), data));
+      } else if (env.logQueries) {
+        //console.log("The list of employees : ", data);
+        email = data;
+      } else {
+        admin=JSON.parse(JSON.stringify(data));
+        for (var i in admin) {
+          val = admin[i];
+          //console.log(val.email);
+          client.sendEmail({
+            "From": "info@lucidseat.com",
+            "To": val.email,
+            "Subject": 'Seating Chart Update Recommended',
+            "TextBody": "Employee(s) have updated their preferences and the Seating Chart recommendation may have changed."
+          });
+        }
+      }
+    });
+  } else if (emailData.reason ==='employeeAdd') {
+    //console.log("got here");
+    //console.log(emailData.to);
+    client.sendEmail({
+      "From": "info@lucidseat.com",
+      "To": emailData.to,
+      "Subject": 'Welcome to DeskSeeker!',
+      "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password
+    });
+  }
+  //console.log("finished");
+  res.send("Email sent");
+});
+
+/**************** Initialization Checks ****************/
+router.get('/ExistsCompany',function(req, res, next) {
+  queries.existsCompany(dbconnect, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there a company? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsCompanyForAdmin/:id',function(req, res, next) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.existsCompanyForAdmin(dbconnect, ID, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there a company for admin? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsEmployee/:id',function(req, res, next) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.existsEmployee(dbconnect, ID, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there an employee? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsEmployeeInOffice/:id',function(req, res, next) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.existsEmployeeInOffice(dbconnect, ID, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there the employee in office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsOffice',function(req, res, next) {
+  queries.existsOffice(dbconnect, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there an office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsOfficeForAdmin/:id',function(req, res, next) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.existsOfficeForAdmin(dbconnect, ID, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there an office for admin? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsSuperadminWithOffice',function(req, res, next) {
+  queries.existsSuperadminWithOffice(dbconnect, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there a superadmin associated with an office? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/ExistsTemperatureRange',function(req, res, next) {
+  queries.existsTemperatureRange(dbconnect, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Is there a temperature range? 0 means no and 1 means yes: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+/**************** RESTful API ****************/
+// GET /api page
+router.get('/', function(req, res, next) {
+  res.redirect('/');
+});
+
 /**************** Get Queries ****************/
 router.get('/AdminsForCompany/:id',function(req, res, next) {
   if (!isInt(req.params.id)) {
@@ -1962,6 +2139,23 @@ router.get('/FloorPlanOfOffice/:id',function(req, res, next) {
   });
 });
 
+router.get('/IsEmployeeAdmin/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.isEmployeeAdmin(dbconnect, req.params.id, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Employee" + req.params.id + " is admin? " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+
 router.get('/Office/:id',function(req, res, next) {
   if (!isInt(req.params.id)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
@@ -2056,188 +2250,6 @@ router.get('/User/:id',function(req, res, next) {
       res.json(data);
     }
   });
-});
-
-router.post('/UpdatePassword',function(req, res) {
-  var passwords = JSON.parse(JSON.stringify(req.body));
-
-  queries.getOneEmployeeConfidential(dbconnect, passwords.employeeID, function(err, data) {
-    var query = JSON.parse(JSON.stringify(data));
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    }
-    else {
-      bcrypt.genSalt(10, function(err, salt) {
-        if (bcrypt.compareSync(passwords.oldPassword, query[0].password)) {
-          if (passwords.password===passwords.password2) {
-            bcrypt.genSalt(10, function(err, salt) {
-              bcrypt.hash(passwords.password, salt, function(err, hash) {
-                var employee = {
-                  firstName : query[0].firstName,
-                  lastName : query[0].lastName,
-                  email : query[0].email,
-                  password : hash,
-                  department : query[0].department,
-                  title : query[0].title,
-                  restroomUsage : query[0].restroomUsage,
-                  noisePreference : query[0].noisePreference,
-                  outOfDesk : query[0].outOfDesk,
-                  pictureAddress : query[0].pictureAddress,
-                  permissionLevel : query[0].permissionLevel
-                };
-                queries.editEmployee(dbconnect, employee, passwords.employeeID);
-                res.json(apiSuccess.successQuery(true, "Password is updated in seating_lucid_agency"));
-              });
-            });
-          }
-          else {
-            res.json(apiError.successError(false, 'New passwords do not match.'));
-          }
-        }
-        else {
-          res.json(apiError.successError(false, 'Invalid: old password'));
-        }
-      });
-    }
-  });
-});
-
-router.post('/PasswordResetEmailCheck', function(req, res) {
-  var user = JSON.parse(JSON.stringify(req.body));
-  queries.getUser(dbconnect, user, function(err, data) {
-    console.log(data);
-    if (data.length>0) {
-      res.json({ success: true, message: 'User found.', data });
-    }
-    else {
-      res.json({ success: false, message: 'No such user.' });
-    }
-  });
-});
-
-router.post('/PasswordResetUpdate', function(req, res) {
-  var user = JSON.parse(JSON.stringify(req.body));
-  console.log(user);
-  queries.getOneEmployeeConfidential(dbconnect, user.employeeID, function(err, data) {
-    var query = JSON.parse(JSON.stringify(data));
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    }
-    else {
-      bcrypt.genSalt(10, function(err, salt) {
-        bcrypt.hash(user.password, salt, function(err, hash) {
-          var employee = {
-            firstName : query[0].firstName,
-            lastName : query[0].lastName,
-            email : query[0].email,
-            password : hash,
-            department : query[0].department,
-            title : query[0].title,
-            restroomUsage : query[0].restroomUsage,
-            noisePreference : query[0].noisePreference,
-            outOfDesk : query[0].outOfDesk,
-            pictureAddress : query[0].pictureAddress,
-            permissionLevel : query[0].permissionLevel
-          };
-          queries.editEmployee(dbconnect, employee, user.employeeID);
-          res.json(apiSuccess.successQuery(true, "Password is updated in seating_lucid_agency"));
-        });
-      });
-    }
-  });
-})
-
-/**************** E-mail API ****************/
-router.post('/SendEmail',function(req, res, next) {
-  var emailData = JSON.parse(JSON.stringify(req.body));
-  console.log(emailData);
-  //Admin Reasons: Password update, password reset request, employee preferences changed (daily)
-  //User Reasons: When added to update profile, then 5 days later remind them, after that every 10 days, then suggest update every 92 days
-  // Example request
-  var postmark = require("postmark");
-  var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
-  if (emailData.reason ==='passwordUpdate') {
-    queries.emailSuperAdmins(dbconnect, function(err, data) {
-      if (err) {
-        res.json(apiError.queryError("500", err.toString(), data));
-      } else if (env.logQueries) {
-        //console.log("The list of employees : ", data);
-        email=data;
-      } else {
-        admin=JSON.parse(JSON.stringify(data));
-        for (var i in admin) {
-          val = admin[i];
-          client.sendEmail({
-            "From": "info@lucidseat.com",
-            "To": val.email,
-            "Subject": 'Someone has Updated their Password',
-            "TextBody": emailData.email+" has updated their password."
-          });
-        }
-      }
-    });
-  } else if (emailData.reason ==='passwordReset') {
-    //email Admin about it
-    queries.emailSuperAdmins(dbconnect, function(err, data) {
-      if (err) {
-        res.json(apiError.queryError("500", err.toString(), data));
-      } else if (env.logQueries) {
-        //console.log("The list of employees : ", data);
-        email=data;
-      } else {
-        admin=JSON.parse(JSON.stringify(data));
-        for (var i in admin) {
-          val = admin[i];
-          client.sendEmail({
-            "From": "info@lucidseat.com",
-            "To": val.email,
-            "Subject": 'Someone has Requested a Password Reset',
-            "TextBody": emailData.email+" has requested a password reset and has been given a temporary password."
-          });
-        }
-      }
-    });
-    //email user about it
-    client.sendEmail({
-      "From": "info@lucidseat.com",
-      "To": emailData.email,
-      "Subject": 'Password Reset Requested!',
-      "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+emailData.token
-    });
-
-  } else if (emailData.reason ==='employeeUpdate') {
-    queries.emailSuperAdmins(dbconnect, function(err, data) {
-      if (err) {
-        res.json(apiError.queryError("500", err.toString(), data));
-      } else if (env.logQueries) {
-        //console.log("The list of employees : ", data);
-        email = data;
-      } else {
-        admin=JSON.parse(JSON.stringify(data));
-        for (var i in admin) {
-          val = admin[i];
-          //console.log(val.email);
-          client.sendEmail({
-            "From": "info@lucidseat.com",
-            "To": val.email,
-            "Subject": 'Seating Chart Update Recommended',
-            "TextBody": "Employee(s) have updated their preferences and the Seating Chart recommendation may have changed."
-          });
-        }
-      }
-    });
-  } else if (emailData.reason ==='employeeAdd') {
-    //console.log("got here");
-    //console.log(emailData.to);
-    client.sendEmail({
-      "From": "info@lucidseat.com",
-      "To": emailData.to,
-      "Subject": 'Welcome to DeskSeeker!',
-      "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password
-    });
-  }
-  //console.log("finished");
-  res.send("Email sent");
 });
 
 module.exports = router;
