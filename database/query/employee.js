@@ -511,6 +511,31 @@ exports.isEmployeeAdmin = function(connection, employeeID, callback) {
   });
 };
 
+exports.isEmployeeSuperadmin = function(connection, employeeID, callback) {
+  connection.query('SELECT EXISTS (SELECT E.employeeID FROM seating_lucid_agency.employee AS E WHERE E.employeeID = ? AND E.permissionLevel = "superadmin") AS result;', [employeeID], function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else if (env.logQueries) {
+      console.log("Employee %d is a superadmin where 0 is no and 1 is yes: %d", employeeID), result;
+      callback(null, result);
+    } else {
+      callback(null, result);
+    }
+  });
+};
+
+exports.isEmployeeLastSuperadmin = function(connection, employeeID, callback) {
+  connection.query('SELECT EXISTS (SELECT A.employeeID FROM seating_lucid_agency.employee AS A WHERE A.employeeID <> ? AND A.permissionLevel = "superadmin") AS result;', [employeeID], function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else if (env.logQueries) {
+      console.log("Employee %d is the last superadmin where 0 is no and 1 is yes: %d", employeeID), result;
+      callback(null, result);
+    } else {
+      callback(null, result);
+    }
+  });
+};
 
 exports.updateEmployeeProfileImage = function(connection, data) {
   connection.query('UPDATE seating_lucid_agency.employee SET pictureAddress = ? WHERE employeeID = ?', [data.pictureAddress, data.employeeID], function(err, result) {

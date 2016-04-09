@@ -116,6 +116,16 @@ exports.existsOfficeForAdmin = function(connection, admin_ID, callback) {
   });
 };
 
+exports.existsSuperadmin = function(connection, callback) {
+  connection.query('SELECT EXISTS (SELECT A.employeeID FROM seating_lucid_agency.employee AS A WHERE A.permissionLevel = "superadmin") AS result;', function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, result);
+    }
+  });
+};
+
 exports.existsSuperadminWithOffice = function(connection, callback) {
   connection.query("SELECT EXISTS (SELECT O.officeID FROM seating_lucid_agency.employee AS E, seating_lucid_agency.office AS O, seating_lucid_agency.works_at as W WHERE E.permissionLevel = 'superadmin' AND E.employeeID = W.employeeKey AND W.officeKey = O.officeID) AS result;", function(err, result) {
     if (err) {

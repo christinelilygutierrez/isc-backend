@@ -27,8 +27,7 @@ function isInt(value) {
 function employeePropertiesToArray(employee) {
   return Object.keys(employee).map(function(k) {
     return employee[k];
-  }
-);
+  });
 };
 
 function readTextFile(file) {
@@ -54,6 +53,34 @@ dbconnect.connect(function(err) {
       if (data[0].result == 1) {
         queries.useDatabase(dbconnect);
         console.log("Connected to seating_lucid_agency database");
+        queries.existsSuperadmin(dbconnect, function(err, answer){
+          if (answer[0].result == 0) {
+            bcrypt.genSalt(10, function(err, salt) {
+              bcrypt.hash('1234', salt, function(err, hash) {
+                var employee = {
+                  firstName : 'Superadmin',
+                  lastName : 'I',
+                  email : 'superadmin@seatinglucidagency',
+                  password : hash,
+                  department : 'IT',
+                  title : 'Super Admin',
+                  restroomUsage : 1,
+                  noisePreference : 1,
+                  outOfDesk : 1,
+                  pictureAddress : '',
+                  permissionLevel : 'superadmin'
+                };
+                queries.addEmployee(dbconnect, employee, function (err) {
+                  if (err) {
+                    console.log(err);
+                  } else {
+                    console.log("Superadmin created");
+                  }
+                });
+              });
+            });
+          }
+        });
       } else {
         console.log("Creating seating_lucid_agency");
         queries.createDatabase(dbconnect);
@@ -718,6 +745,8 @@ router.get('/DeleteCompany/:id', function(req, res) {
             for (var i in result) {
               if (result[i].permissionLevel != 'superadmin') {
                 queries.deleteEmployee(dbconnect, result[i].employeeID);
+              } else if (result[i].permissionLevel == 'superadmin') {
+                queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
               }
             }
             queries.deleteOffice(dbconnect, ID);
@@ -725,6 +754,8 @@ router.get('/DeleteCompany/:id', function(req, res) {
             for (var i in result) {
               if (result[i].permissionLevel != 'superadmin') {
                 queries.deleteEmployee(dbconnect, result[i].employeeID);
+              } else if (result[i].permissionLevel == 'superadmin') {
+                queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
               }
             }
             queries.deleteOffice(dbconnect, ID);
@@ -741,6 +772,8 @@ router.get('/DeleteCompany/:id', function(req, res) {
             for (var i in result) {
               if (result[i].permissionLevel != 'superadmin') {
                 queries.deleteEmployee(dbconnect, result[i].employeeID);
+              } else if (result[i].permissionLevel == 'superadmin') {
+                queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
               }
             }
             queries.deleteOffice(dbconnect, ID);
@@ -748,6 +781,8 @@ router.get('/DeleteCompany/:id', function(req, res) {
             for (var i in result) {
               if (result[i].permissionLevel != 'superadmin') {
                 queries.deleteEmployee(dbconnect, result[i].employeeID);
+              } else if (result[i].permissionLevel == 'superadmin') {
+                queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
               }
             }
             queries.deleteOffice(dbconnect, ID);
@@ -794,6 +829,8 @@ router.get('/DeleteOffice/:id', function(req, res) {
       for (var item in data) {
         if (data[item].permissionLevel != 'superadmin') {
           queries.deleteEmployee(dbconnect, data[item].employeeID);
+        } else if (data[item].permissionLevel == 'superadmin') {
+          queries.deleteEmployeeFromOffice(dbconnect, data[item].employeeID);
         }
       }
       queries.deleteOffice(dbconnect, ID);
@@ -801,6 +838,8 @@ router.get('/DeleteOffice/:id', function(req, res) {
       for (var item in data) {
         if (data[item].permissionLevel != 'superadmin') {
           queries.deleteEmployee(dbconnect, data[item].employeeID);
+        } else if (data[item].permissionLevel == 'superadmin') {
+          queries.deleteEmployeeFromOffice(dbconnect, data[item].employeeID);
         }
       }
       queries.deleteOffice(dbconnect, ID);
@@ -2155,6 +2194,38 @@ router.get('/IsEmployeeAdmin/:id',function(req, res, next) {
   });
 });
 
+router.get('/IsEmployeeSuperadmin/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.isEmployeeSuperadmin(dbconnect, req.params.id, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Employee" + req.params.id + " is superadmin? " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/IsEmployeeLastSuperadmin/:id',function(req, res, next) {
+  console.log('hey');
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.isEmployeeLastSuperadmin(dbconnect, req.params.id, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Employee" + req.params.id + " is the only superadmin? " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
 
 router.get('/Office/:id',function(req, res, next) {
   if (!isInt(req.params.id)) {
