@@ -221,6 +221,114 @@ router.get('/Media/ProfileImage/:id', function (req, res, next) {
   });
 });
 
+router.post('/PasswordResetEmailCheck', function(req, res) {
+  console.log("got here");
+  var user = JSON.parse(JSON.stringify(req.body));
+  queries.getUser(dbconnect, user, function(err, data) {
+    console.log(data);
+    if (data.length>0) {
+      res.json({ success: true, message: 'User found.', data });
+    }
+    else {
+      res.json({ success: false, message: 'No such user.' });
+    }
+  });
+});
+
+router.post('/AddPasswordReset',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var adder = {
+    token: data.token,
+    employee_ID : data.employeeID
+  };
+
+  //console.log(adder);
+  req.getConnection(function(err, connection) {
+    if (err) {
+      return res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      queries.addPasswordReset(dbconnect, adder, function (err) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        }
+        //add email
+
+        var postmark = require("postmark");
+        var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
+        console.log(data.employeeID)
+        queries.getOneEmployeeConfidential(dbconnect, data.employeeID, function(err, data) {
+          console.log(data[0].email);
+        
+          client.sendEmail({
+            "From": "info@lucidseat.com",
+            "To": data[0].email,
+            "Subject": 'Someone has Updated their Password',
+            "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+adder.token
+          });
+        });
+
+      });
+    }
+  });
+  res.json(apiSuccess.successQuery(true, "Temporary reset password added to office in seating_lucid_agency"));
+});
+
+router.get('/PasswordReset/:token',function(req, res, next) {
+  queries.getPasswordReset(dbconnect, req.params.token, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Token " + req.params.token +": " , data);
+      res.json(data);
+    } else {
+      console.log(data);
+      res.json(data);
+    }
+  });
+});
+
+router.post('/PasswordResetUpdate', function(req, res) {
+  var user = JSON.parse(JSON.stringify(req.body));
+  console.log(user);
+  queries.getOneEmployeeConfidential(dbconnect, user.employeeID, function(err, data) {
+    var query = JSON.parse(JSON.stringify(data));
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    }
+    else {
+      bcrypt.genSalt(10, function(err, salt) {
+        bcrypt.hash(user.password, salt, function(err, hash) {
+          var employee = {
+            firstName : query[0].firstName,
+            lastName : query[0].lastName,
+            email : query[0].email,
+            password : hash,
+            department : query[0].department,
+            title : query[0].title,
+            restroomUsage : query[0].restroomUsage,
+            noisePreference : query[0].noisePreference,
+            outOfDesk : query[0].outOfDesk,
+            pictureAddress : query[0].pictureAddress,
+            permissionLevel : query[0].permissionLevel
+          };
+          queries.editEmployee(dbconnect, employee, user.employeeID);
+          res.json(apiSuccess.successQuery(true, "Password is updated in seating_lucid_agency"));
+        });
+      });
+    }
+  });
+});
+
+router.get('/DeletePasswordReset/:id', function(req, res) {
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.deletePasswordReset(dbconnect, ID);
+  res.json(apiSuccess.successQuery(true, "Temporary reset password deleted in seating_lucid_agency"));
+});
+
 /**************** MUST HAVE CREDENTIALS FOR THE FOLLOWING HTTP METHODS ****************/
 router.use(function(req, res, next) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
@@ -647,28 +755,6 @@ router.post('/AddOfficeEmployee',function(req, res, next) {
   res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
 });
 
-router.post('/AddPasswordReset',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var adder = {
-    token: data.token,
-    employee_ID : data.employeeID
-  };
-
-  //console.log(adder);
-  req.getConnection(function(err, connection) {
-    if (err) {
-      return res.json(apiError.queryError("500", err.toString(), data));
-    } else {
-      queries.addPasswordReset(dbconnect, adder, function (err) {
-        if (err) {
-          return res.json(apiError.queryError("500", err.toString(), data));
-        }
-      });
-    }
-  });
-  res.json(apiSuccess.successQuery(true, "Temporary reset password added to office in seating_lucid_agency"));
-});
-
 router.post('/AddTeammatesToEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
 
@@ -848,16 +934,6 @@ router.get('/DeleteOffice/:id', function(req, res) {
   res.json(apiSuccess.successQuery(true, "Office deleted in seating_lucid_agency"));
 });
 
-router.get('/DeletePasswordReset/:id', function(req, res) {
-  var ID = req.params.id;
-
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.deletePasswordReset(dbconnect, ID);
-  res.json(apiSuccess.successQuery(true, "Temporary reset password deleted in seating_lucid_agency"));
-});
-
 router.get('/DeletePasswordResetForEmployee/:employeeID', function(req, res) {
   var ID = req.params.employeeID;
 
@@ -985,6 +1061,29 @@ router.post('/EditEmployee/:id', function(req, res) {
     }
   });
   res.json(apiSuccess.successQuery(true, "Employee edited in seating_lucid_agency"));
+});
+
+router.post('/EditEmployeePermission/:id', function(req, res) {
+  console.log("got here");
+  var data = JSON.parse(JSON.stringify(req.body));
+  var ID = req.params.id;
+
+  if (!isInt(ID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  req.getConnection(function(err, connection) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else {
+      var employee = {
+        permissionLevel: data.permissionLevel,
+        haveUpdated : 1,
+        accountUpdated: (new Date)
+      };
+      queries.editEmployee(dbconnect, employee, ID);
+    }
+  });
+  res.json(apiSuccess.successQuery(true, "Employee upgaded to admin in seating_lucid_agency"));
 });
 
 router.post('/EditAdminToCompany/:id', function(req, res) {
@@ -1245,18 +1344,7 @@ router.post('/UpdatePassword',function(req, res) {
   });
 });
 
-router.post('/PasswordResetEmailCheck', function(req, res) {
-  var user = JSON.parse(JSON.stringify(req.body));
-  queries.getUser(dbconnect, user, function(err, data) {
-    console.log(data);
-    if (data.length>0) {
-      res.json({ success: true, message: 'User found.', data });
-    }
-    else {
-      res.json({ success: false, message: 'No such user.' });
-    }
-  });
-});
+
 
 router.post('/PasswordResetUpdate', function(req, res) {
   var user = JSON.parse(JSON.stringify(req.body));
@@ -2254,20 +2342,6 @@ router.get('/OfficeOfEmployee/:id',function(req, res, next) {
       console.log("Office # for Employee " + req.params.id +": " , data);
       res.json(data);
     } else {
-      res.json(data);
-    }
-  });
-});
-
-router.get('/PasswordReset/:token',function(req, res, next) {
-  queries.getPasswordReset(dbconnect, req.params.token, function(err, data) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Token " + req.params.token +": " , data);
-      res.json(data);
-    } else {
-      console.log(data);
       res.json(data);
     }
   });
