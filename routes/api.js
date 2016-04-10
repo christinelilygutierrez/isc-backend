@@ -1388,7 +1388,7 @@ router.post('/SendEmail',function(req, res, next) {
   var postmark = require("postmark");
   var client = new postmark.Client("e1b0b5ca-9559-4ecb-a813-8f53cee568d2");
   if (emailData.reason ==='passwordUpdate') {
-    queries.emailSuperAdmins(dbconnect, function(err, data) {
+    queries.emailAdmins(dbconnect, function(err, data) {
       if (err) {
         res.json(apiError.queryError("500", err.toString(), data));
       } else if (env.logQueries) {
@@ -1409,7 +1409,7 @@ router.post('/SendEmail',function(req, res, next) {
     });
   } else if (emailData.reason ==='passwordReset') {
     //email Admin about it
-    queries.emailSuperAdmins(dbconnect, function(err, data) {
+    queries.emailAdmins(dbconnect, function(err, data) {
       if (err) {
         res.json(apiError.queryError("500", err.toString(), data));
       } else if (env.logQueries) {
@@ -1436,27 +1436,6 @@ router.post('/SendEmail',function(req, res, next) {
       "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+emailData.token
     });
 
-  } else if (emailData.reason ==='employeeUpdate') {
-    queries.emailSuperAdmins(dbconnect, function(err, data) {
-      if (err) {
-        res.json(apiError.queryError("500", err.toString(), data));
-      } else if (env.logQueries) {
-        //console.log("The list of employees : ", data);
-        email = data;
-      } else {
-        admin=JSON.parse(JSON.stringify(data));
-        for (var i in admin) {
-          val = admin[i];
-          //console.log(val.email);
-          client.sendEmail({
-            "From": "info@lucidseat.com",
-            "To": val.email,
-            "Subject": 'Seating Chart Update Recommended',
-            "TextBody": "Employee(s) have updated their preferences and the Seating Chart recommendation may have changed."
-          });
-        }
-      }
-    });
   } else if (emailData.reason ==='employeeAdd') {
     //console.log("got here");
     //console.log(emailData.to);
