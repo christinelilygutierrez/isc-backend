@@ -27,12 +27,15 @@ exports.addEmployeeSync = function(connection, values, officeID) {
         } else if (env.logQueries) {
           console.log("%s %s was retrieved from database", values[0], values[1]);
         } else {
+          //console.log(data[0].employeeID);
+          //console.log(officeID);
           connection.query("INSERT INTO seating_lucid_agency.works_at SET ?;", {employeeKey: data[0].employeeID, officeKey: officeID}, function(err, answer) {
             if (err && env.logErrors) {
               console.log(err);
             } else if (env.logQueries) {
               console.log("Inserted into Office");
             } else {
+              //console.log(answer);
             }
           });
         }

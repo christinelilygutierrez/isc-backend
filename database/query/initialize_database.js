@@ -36,7 +36,8 @@ CREATE TABLE employee (\
   haveUpdated tinyint(1) unsigned NOT NULL DEFAULT '0',\
   accountCreated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\
   accountUpdated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\
-  PRIMARY KEY (employeeID)\
+  PRIMARY KEY (employeeID),\
+  UNIQUE KEY email_UNIQUE (email)\
 );\
 CREATE TABLE employee_blacklist (\
   idemployee_blacklist int(10) unsigned NOT NULL,\
