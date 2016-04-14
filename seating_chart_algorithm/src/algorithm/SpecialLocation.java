@@ -2,7 +2,7 @@ package algorithm;
 import java.util.ArrayList;
 
 
-public class SpecialLocation {
+class SpecialLocation {
 	private String type;
 	private int integerType;
 	private Point point;
@@ -11,7 +11,7 @@ public class SpecialLocation {
 	private String stringIdentifier;
 	ArrayList<Point> points;
 	
-	public SpecialLocation(int type, Point point){
+	SpecialLocation(int type, Point point){
 		integerType = type;
 		switch(type){
 		case 4: 
@@ -33,61 +33,63 @@ public class SpecialLocation {
 		points.add(point);
 	}
 	
-	public SpecialLocation(String type){
+	SpecialLocation(String type){
 		this.type = type;
 	}
 	
-	public void setType(String type){
+	void setType(String type){
 		this.type = type;
 	}
 	
-	public String getStringIdentifier(){
+	String getStringIdentifier(){
 		return stringIdentifier;
 	}
 	
-	public String getType(){
+	String getType(){
 		return type;
 	}
 	
-	public void setPoint(Point point){
+	void setPoint(Point point){
 		this.point = point;
 	}
 	
-	public Point getPoint(){
+	Point getPoint(){
 		return point;
 	}
 	
-	public void createPseudoEmployee(int id){
+	void createPseudoEmployee(int id, int spotInArray){
 		pseudoEmployee = new Employee(id);
-		//What are the characteristics of our new employee?
-		//
-		//
+		pseudoEmployee.setSpotInArray(spotInArray);
 		pseudoCluster.assignToDesk(pseudoEmployee);
 	}
 	
-	public void addPoint(Point point){
+	double calculateSimilarity(int rating){
+		return rating * 4.3;
+	}
+	
+	void addPoint(Point point){
 		points.add(point);
 		pseudoCluster.addDesk(new Desk(point));
 		pseudoCluster.setNumberOfDesks(1); //We always want it set to 1, because we needed it to be treated like a cluster with a single employee.
 	}
 
-	public Cluster getPseudoCluster() {
+	Cluster getPseudoCluster() {
 		return pseudoCluster;
 	}
 	
-	public int getNumberOfPoints(){
+	int getNumberOfPoints(){
 		return points.size();
 	}
 	
-	public Point getPoint(int i){
+	Point getPoint(int i){
 		return points.get(i);
 	}
 	
-	public int getIntegerType(){
+	int getIntegerType(){
 		return integerType;
 	}
 	
-	public boolean checkForPoint(Point p){
+	boolean checkForPoint(Point p){
 		for(int i = 0; i < points.size(); i++){
 			if(points.get(i).equalsPoint(p)){
 				return true;
@@ -96,7 +98,7 @@ public class SpecialLocation {
 		return false;
 	}
 	
-	public boolean sharesAPointWith(SpecialLocation other){
+	boolean sharesAPointWith(SpecialLocation other){
 		for(int i = 0; i < points.size(); i++){
 			for(int j = 0; j < other.getNumberOfPoints(); j++){
 				if(points.get(i).equalsPoint(other.getPoint(j))){

@@ -1,11 +1,11 @@
 package algorithm;
 import java.util.Arrays;
 
-public class Score {
+class Score {
 	private Chart chart;
 	private int clusterScore, employeeScore, numClusters, numEmployees;
 	
-	public Score(Chart c){
+	Score(Chart c){
 		chart = c;
 		clusterScore = 0;
 		employeeScore = 0;
@@ -23,7 +23,7 @@ public class Score {
 		numEmployees++;
 	}
 	
-	public double getClusterAverage(){
+	double getClusterAverage(){
 		if(numClusters > 0){
 			return clusterScore / numClusters;
 		}
@@ -31,7 +31,7 @@ public class Score {
 			return 0;
 	}
 	
-	public double getEmployeeAverage(){
+	double getEmployeeAverage(){
 		if(numEmployees > 0){
 			return employeeScore/numEmployees;
 		}
@@ -39,15 +39,8 @@ public class Score {
 			return 0;
 	}
 	
-	public int computeScoreOutOf100(){
+	int computeScoreOutOf100(){
 		chart.findPostAssignmentClusterSimilarities();
-		/*for(int i = 0; i < chart.getNumberOfClusters(); i++){
-			System.out.println("Cluster " + i);
-			for(int j = 0; j < chart.getNumberOfClusters(); j++){
-				System.out.print(" " + chart.getSpecifiedPostAssignmentClusterSimilarity(i, j));
-			}
-			System.out.println("");
-		}*/
 		
 		//Compute individual cluster score for each cluster in the chart.
 		int clustersInChart = chart.getNumberOfClusters();
@@ -87,10 +80,8 @@ public class Score {
 		double currentSimilaritiesArray[][];
 		for(int i = 0; i < totalNumberOfEmployees; i++){
 			currentSimilaritiesArray = chart.getEmployeeSimilaritiesArray();
-			//System.out.println("" + employeesInCluster[i].getID() + ": ");
 			currentEmployeeScore = computeEmployeeScoreOutOf100(employeesInCluster[i], withinClusterScores[i], currentSimilaritiesArray[i]);
 			updateEmployeeScore(currentEmployeeScore);
-			//System.out.println("\tOverall score:" + currentEmployeeScore);
 			totalEmployeeScore += currentEmployeeScore;
 		}
 		double employeeClusterScore = totalEmployeeScore / totalNumberOfEmployees;
@@ -117,7 +108,6 @@ public class Score {
 		//Find upper25 value:
 		upper25 = findUpper25(similarities);
 		
-		//System.out.println("\t" + lower25 + " " + median + " " + upper25);
 		if(clusterSimilarity < lower25){
 			return 0;
 		}
@@ -131,43 +121,39 @@ public class Score {
 	}
 	
 	private int computeClusterLocationScoreOutOf100(Cluster cluster, int clusterIndex){
-		//System.out.println("Cluster: " + clusterIndex);
 		//We're including the original cluster in the close cluster average. 
 		int numberOfCloseClusters = chart.getNumberOfClusters() / 4;
 		if(numberOfCloseClusters == 1 && chart.getNumberOfClusters() > 2){
 			numberOfCloseClusters = 2;
 		}
-		//System.out.println("Close clusters: " + numberOfCloseClusters);
+		
 		double closeClusterAverage = 0;
 		
 		double lower25, median, upper25;
 		
 		double[] preAssignmentSimilarities = (chart.getClusterSimilaritiesArray())[clusterIndex];
+		
 		//Sort pre assignment similarities:
 		double preSimilarities[][] = new double[2][chart.getNumberOfClusters()];
+		
 		for(int i = 0; i < chart.getNumberOfClusters(); i++){
 			preSimilarities[0][i] = i;
 			preSimilarities[1][i] = preAssignmentSimilarities[i];
 		}
+		
 		preSimilarities = sortArray(preSimilarities);
 		
-		
-		//Sort post assignment similarities:
 		double[] postAssignmentSimilarities = (chart.getPostAssignmentClusterSimilarities())[clusterIndex];
-		//double similarities[] = postAssignmentSimilarities;
-		postAssignmentSimilarities = sortArray(postAssignmentSimilarities);
 		
 		for(int i = 0; i < numberOfCloseClusters; i++){
 			closeClusterAverage += postAssignmentSimilarities[(int)preSimilarities[0][i]];
 		}
-		//System.out.println("\tClose cluster sum: " + closeClusterAverage);
+		
 		closeClusterAverage = closeClusterAverage / numberOfCloseClusters;
 		
-		//System.out.println("\tClose cluster average: " + closeClusterAverage);
-		
+		postAssignmentSimilarities = sortArray(postAssignmentSimilarities);
 		//Find median:
 		median = findMedian(postAssignmentSimilarities);
-		//System.out.println("Median " + median);
 		
 		//Find lower25 value:
 		lower25 = findLower25(postAssignmentSimilarities);
@@ -175,37 +161,16 @@ public class Score {
 		//Find upper25 value:
 		upper25 = findUpper25(postAssignmentSimilarities);
 		
-		//System.out.println("\tLower25: " + lower25 + ", median: " + median + ", upper25: " + upper25);
-		
-		
-		
-		/*System.out.print("\tPre assignment similarities: ");
-		for(int i = 0; i < chart.getNumberOfClusters(); i++){
-			System.out.print(preSimilarities[1][i] + " ");
-		}
-		
-		System.out.println("");
-		
-		System.out.print("\tPost assignment similarities: ");
-		for(int i = 0; i < chart.getNumberOfClusters(); i++){
-			System.out.print(postAssignmentSimilarities[i] + " ");
-		}
-		
-		System.out.println("");*/
-		
 		if(closeClusterAverage < lower25){
-			//System.out.println("\tScore: " + 0);
 			return 0;
 		}
 		if(closeClusterAverage < median){
-			//System.out.println("\tScore: " + 34);
 			return 34;
 		}
 		if(closeClusterAverage < upper25){
-			//System.out.println("\tScore: " + 66);
 			return 66;
 		}
-		//System.out.println("\tScore: " + 100);
+		
 		return 100; // Because it's between upper25 and being perfect. 
 	}
 	
