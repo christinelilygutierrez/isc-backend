@@ -258,7 +258,7 @@ router.post('/AddPasswordReset',function(req, res, next) {
         console.log(data.employeeID)
         queries.getOneEmployeeConfidential(dbconnect, data.employeeID, function(err, data) {
           console.log(data[0].email);
-        
+
           client.sendEmail({
             "From": "info@lucidseat.com",
             "To": data[0].email,
@@ -1754,6 +1754,19 @@ router.get('/AllOffices',function(req, res, next) {
   });
 });
 
+router.get('/AllOfficesWithoutAnAdmin',function(req, res, next) {
+  queries.getAllOfficesWithoutAnAdmin(dbconnect, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("The list of offices without an assigned admin: ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/AllEmployeesExcept/:id',function(req, res, next) {
   if (!isInt(req.params.id)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
@@ -1873,6 +1886,24 @@ router.get('/CompanyOffices/:id',function(req, res, next) {
       res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
       console.log("Company #" + req.params.id + " offices: " , data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
+router.get('/CompanyOfficesWithoutAnAdmin/:id',function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  console.log('Check 1');
+  queries.getAllOfficesWithoutAnAdminForOneCompany(dbconnect, req.params.id, function(err, data) {
+    console.log('Check 2');
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("Company #" + req.params.id + " offices without an admin: " , data);
       res.json(data);
     } else {
       res.json(data);
