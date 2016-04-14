@@ -2689,6 +2689,18 @@ router.get('/PasswordResetForEmployee/:id',function(req, res, next) {
   });
 });
 
+router.get('/SeatingCharts', function(req, res, next) {
+  queries.getSeatingCharts(dbconnect, function(err, data) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), data));
+    }
+    if (env.logQueries) {
+      console.log('Seating Charts:' , data);
+    }
+    return res.json(data);
+  });
+});
+
 router.get('/TemperatureRange/:id',function(req, res, next) {
   if (!isInt(req.params.id)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
