@@ -58,7 +58,7 @@ app.all('*', function(req, res, next) {
   res.header("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token, X-Requested-With, X-Access-Token, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version, X-File-Name");
   res.header("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS");
   if (req.method === 'OPTIONS') {
-    res.send(200);
+    res.sendStatus(200);
   } else {
     next();
   }
