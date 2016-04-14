@@ -140,6 +140,17 @@ CREATE TABLE password_reset (\
   KEY employee_ID (employee_ID),\
   CONSTRAINT employee_ID FOREIGN KEY (employee_ID) REFERENCES employee (employeeID) ON DELETE NO ACTION ON UPDATE NO ACTION\
 );\
+CREATE TABLE seating_charts (\
+  id int(10) unsigned NOT NULL,\
+  office_id int(10) unsigned NOT NULL,\
+  name varchar(55) NOT NULL DEFAULT 'New Design',\
+  cols int(10) unsigned NOT NULL,\
+  rows int(10) unsigned NOT NULL,\
+  created_at TIMESTAMP default CURRENT_TIMESTAMP,\
+  updated_at TIMESTAMP,\
+  PRIMARY KEY (id),\
+  CONSTRAINT office_id FOREIGN KEY (office_id) REFERENCES office (officeID) ON DELETE NO ACTION ON UPDATE NO ACTION\
+);\
 CREATE TABLE sits_at (\
   IDemployee int(10) unsigned NOT NULL,\
   IDdesk int(10) unsigned NOT NULL,\
