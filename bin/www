@@ -10,9 +10,9 @@ var fs = require('fs');
 var http = require('http');
 var https = require('https');
 
-var privateKey  = fs.readFileSync('./sslcert/localhost.key', 'utf8');
-var certificate = fs.readFileSync('./sslcert/localhost.crt', 'utf8');
-var credentials = {key: privateKey, cert: certificate,  passphrase: 'test'};
+// var privateKey  = fs.readFileSync('./sslcert/localhost.key', 'utf8');
+// var certificate = fs.readFileSync('./sslcert/localhost.crt', 'utf8');
+// var credentials = {key: privateKey, cert: certificate,  passphrase: '%R)IVdH>-Jrr_+yH3vG)Lw<-Me3X35YJHr]xXL|AAH0H8gH`t#P]>+(xPU-|I_i;'};
 
 /**
  * Get port from environment and store in Express.
@@ -26,7 +26,7 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
-var httpsServer = https.createServer(credentials, app);
+//var httpsServer = https.createServer(credentials, app);
 
 /**
  * Listen on provided port, on all network interfaces.

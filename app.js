@@ -18,7 +18,7 @@ var similarity = require('./seating_chart_algorithm/similarity_algorithm');
 /**************** Database Connection ****************/
 var dbconnect = queries.getConnection();
 var sess = {
-  secret: 'test',
+  secret: env.key,
   resave: true,
   saveUninitialized: true,
   employee: {}

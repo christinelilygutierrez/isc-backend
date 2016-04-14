@@ -167,7 +167,7 @@ exports.getAllOfficesForOneCompany = function(connection, companyID, callback) {
 };
 
 exports.getAllOfficesWithoutAnAdminForOneCompany = function(connection, companyID, callback) {
-  connection.query('SELECT DISTINCT O.officeID, O.officeName, O.officePhoneNumber, O.officeEmail, O.officeStreetAddress, O.officeCity, O.officeStreetAddress, O.officeState, O.officeZipcode FROM seating_lucid_agency.company AS C, seating_lucid_agency.employee AS E, seating_lucid_agency.manages AS M, seating_lucid_agency.office AS O, seating_lucid_agency.owned_by OW, seating_lucid_agency.works_at AS W WHERE C.companyID = ? AND C.companyID = OW.IDforCompany AND OW.IDforOffice = O.officeID AND (NOT O.officeID IN (SELECT W.officeKey FROM seating_lucid_agency.employee AS E, seating_lucid_agency.manages AS M, seating_lucid_agency.works_at AS W WHERE W.officeKey AND W.employeeKey = M.admin_ID AND M.admin_ID = E.employeeID AND E.permissionLevel = "admin"));', companyID, function(err, result) {
+  connection.query('SELECT DISTINCT O.officeID, O.officeName, O.officePhoneNumber, O.officeEmail, O.officeStreetAddress, O.officeCity, O.officeStreetAddress, O.officeState, O.officeZipcode FROM seating_lucid_agency.company AS C, seating_lucid_agency.office AS O, seating_lucid_agency.owned_by OW WHERE C.companyID = ? AND C.companyID = OW.IDforCompany AND OW.IDforOffice = O.officeID AND (NOT O.officeID IN (SELECT W.officeKey FROM seating_lucid_agency.employee AS E, seating_lucid_agency.manages AS M, seating_lucid_agency.works_at AS W WHERE W.officeKey AND W.employeeKey = M.admin_ID AND M.admin_ID = E.employeeID AND E.permissionLevel = "admin"));', companyID, function(err, result) {
     if (err) {
       callback(err, null);
     } else {

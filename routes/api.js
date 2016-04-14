@@ -16,18 +16,111 @@ var queries = require('../database/all_queries');
 var router = express.Router();
 var uuid = require('node-uuid');
 var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+var pub = fs.readFileSync(path.join(__dirname+"./../sslcert/localhost.pem"));
+var priv = fs.readFileSync(path.join(__dirname+"./../sslcert/localhost.key"));
 
 /**************** Utility Functions ****************/
 function isInt(value) {
-  return !isNaN(value) &&
-  parseInt(Number(value)) == value &&
-  !isNaN(parseInt(value, 10));
-}
+  return !isNaN(value) &&  parseInt(Number(value)) == value &&   !isNaN(parseInt(value, 10));
+};
+
+function isEmpty(obj) {
+  for(var prop in obj) {
+    if(obj.hasOwnProperty(prop))
+      return false;
+  }
+  return true;
+};
 
 function employeePropertiesToArray(employee) {
   return Object.keys(employee).map(function(k) {
     return employee[k];
   });
+};
+
+function superadminPermissionCheck(token, callback) {
+  if (token) {
+    //console.log('hi');
+    jwt.verify(token, env.key, function(err, decoded) {
+      if (err) {
+        //console.log('there');
+        callback(apiError.successError(false, 'Token authentication failure'));
+      } else {
+        //console.log('decoded: ', decoded);
+         queries.validatedToken(dbconnect, decoded.email, decoded.password, function(err, results) {
+           if (results[0].permissionLevel != 'superadmin') {
+             callback(apiError.successError(false, 'Permission Denied. superadmin access only'));
+           } else {
+             callback(apiError.successError(true, 'superadmin verified'));
+           }
+         });
+      }
+    });
+  } else {
+    callback(apiError.successError(false, 'No token provided'));
+  }
+};
+
+function adminPermissionCheck(token, callback) {
+  if (token) {
+    //console.log('hi');
+    jwt.verify(token, env.key, function(err, decoded) {
+      if (err) {
+        //console.log('there');
+        callback(apiError.successError(false, 'Token authentication failure'));
+      } else {
+        //console.log('decoded: ', decoded);
+         queries.validatedToken(dbconnect, decoded.email, decoded.password, function(err, results) {
+           if (results[0].permissionLevel != 'admin' && results[0].permissionLevel != 'superadmin') {
+             callback(apiError.successError(false, 'Permission Denied. admin required'));
+           } else {
+             callback(apiError.successError(true, 'admin verified'));
+           }
+         });
+      }
+    });
+  } else {
+    callback(apiError.successError(false, 'No token provided'));
+  }
+};
+
+function userPermissionCheck(token, employeeID, callback) {
+  var employee1;
+  var employee2;
+  if (token) {
+    //console.log('hi');
+    jwt.verify(token, env.key, function(err, decoded) {
+      if (err) {
+        //console.log('there');
+        callback(apiError.successError(false, 'Token authentication failure'));
+      } else {
+        //console.log('decoded: ', decoded);
+        queries.validateUser(dbconnect, decoded.email, decoded.password, employeeID, function(err, results) {
+          if (isEmpty(results)) {
+            callback(apiError.successError(false, 'Error: invalid parameters'));
+          } else {
+            employee1 = {employeeID : results[0].EID, permissionLevel: results[0].EP};
+            employee2 = {employeeID : results[0].AID, permissionLevel: results[0].AP};
+            if (employee1.permissionLevel == 'user' && (employee2.permissionLevel == 'admin' || employee2.permissionLevel == 'superadmin')) {
+              callback(apiError.successError(false, 'Permission denied. Must be an admin or superadmin'));
+            } else if (employee1.permissionLevel == 'user' && employee2.permissionLevel == 'user' && employee1.employeeID != employee2.employeeID) {
+              callback(apiError.successError(false, 'Permission denied. users cannot edit other employees'));
+            } else if (employee1.permissionLevel == 'admin' && employee2.permissionLevel == 'admin' && employee1.employeeID != employee2.employeeID) {
+              callback(apiError.successError(false, 'Permission denied. admins cannot edit other admins'));
+            } else if (employee1.permissionLevel == 'admin' && employee2.permissionLevel == 'superadmin') {
+              callback(apiError.successError(false, 'Permission denied. admins cannot edit superadmins'));
+            } else if (employee1.permissionLevel == 'superadmin' && employee2.permissionLevel == 'superadmin' && employee1.employeeID != employee2.employeeID) {
+              callback(apiError.successError(false, 'Permission denied. superadmins cannot edit other superadmins'));
+            } else {
+              callback(apiError.successError(true, 'user access granted'));
+            }
+          }
+        });
+      }
+    });
+  } else {
+    callback(apiError.successError(false, 'No token provided'));
+  }
 };
 
 function readTextFile(file) {
@@ -145,7 +238,7 @@ router.post('/Authenticate', function(req, res) {
           dbUser = JSON.parse(JSON.stringify(rows[0]));
           if (dbUser.email === u && bcrypt.compareSync(p, dbUser.password)) {
             employee.password = dbUser.password;
-            token = jwt.sign(employee, "test", {
+            token = jwt.sign(employee, env.key, {
               expiresIn: moment().add(1, 'days').valueOf() // expires in 24 hours
             });
             res.json(apiSuccess.successToken(true, 'Enjoy your token!', token));
@@ -166,7 +259,7 @@ router.get('/Verify/', function(req, res, next) {
   // decode token
   if (token) {
     // verifies secret and checks exp
-    jwt.verify(token, 'test', function(err, decoded) {
+    jwt.verify(token, env.key, function(err, decoded) {
       if (err) {
         res.json(apiError.successError(false, 'Failed to authenticate token.'));
       } else {
@@ -185,7 +278,7 @@ router.get('/Verify/', function(req, res, next) {
   } else {
     // if there is no token
     // return an error
-    return res.status(403).json(apiError.successError(false, 'No token provided.'));
+    return res.json(apiError.successError(false, 'No token provided.'));
   }
 });
 
@@ -335,7 +428,7 @@ router.use(function(req, res, next) {
   // decode token
   if (token) {
     // verifies secret and checks exp
-    jwt.verify(token, 'test', function(err, decoded) {
+    jwt.verify(token, env.key, function(err, decoded) {
       if (err) {
         return res.status(403).send(apiError.successError(false, 'Failed to authenticate token.'));
       } else {
@@ -388,293 +481,310 @@ router.post('/Upload/Image', upload.single('file'), function (req, res, next) {
 });
 
 router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
-  var file = req.file;
-  var rs = fs.createReadStream(file.path);
-  parser = csvParser({columns: true}, function(err, employees) {
-    if (err) {
-      res.json(apiError.errors("400","Error with parsing JSON"));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var file = req.file;
+      var rs = fs.createReadStream(file.path);
+      parser = csvParser({columns: true}, function(err, employees) {
+        if (err) {
+          res.json(apiError.errors("400","Error with parsing JSON"));
+        } else {
+          var values=[];
+          for( var i in employees) {
+            //gets the employee
+            employee= JSON.parse(JSON.stringify(employees[i]));
+            //converts json to array
+            var arr = employeePropertiesToArray(employee);
+            values.push(arr);
+          }
+        }
+      });
+      rs.pipe(parser);
+      //console.log(file.filename);
+      res.status(204).end();
     } else {
-      var values=[];
-      for( var i in employees) {
-        //gets the employee
-        employee= JSON.parse(JSON.stringify(employees[i]));
-        //converts json to array
-        var arr = employeePropertiesToArray(employee);
-        values.push(arr);
-      }
+      return res.json(check);
     }
   });
-  rs.pipe(parser);
-  //console.log(file.filename);
-  res.status(204).end();
 });
 
 /**************** Algorithm Call *****************/
 router.post('/Algorithm/Execute', function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var address = path.join(__dirname + "./../seating_chart_algorithm");
-  var similarityFile = address + "/similarity_files/" + data.similarityFile;
-  var employeeFile = address + "/employee_files/" +  data.employeeFile;
-  var chartFile = address + "/chart_files/" +  data.chartFile;
-  var output = address + "/output/" + data.output;
-  var cmd = 'java -jar ' + address+'/Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile + ' ' + output;
-  //console.log(cmd);
-  var result;
-  //console.log(cmd);
-  exec(cmd, function(error, stdout, stderr) {
-    //console.log(stdout);
-    result = readTextFile(address + 'output.json');
-    console.log(result);
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var address = path.join(__dirname + "./../seating_chart_algorithm");
+      var similarityFile = address + "/similarity_files/" + data.similarityFile;
+      var employeeFile = address + "/employee_files/" +  data.employeeFile;
+      var chartFile = address + "/chart_files/" +  data.chartFile;
+      var output = address + "/output/" + data.output;
+      var cmd = 'java -jar ' + address+'/Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile + ' ' + output;
+      //console.log(cmd);
+      var result;
+      //console.log(cmd);
+      exec(cmd, function(error, stdout, stderr) {
+        //console.log(stdout);
+        result = readTextFile(address + 'output.json');
+        console.log(result);
+      });
+      res.json(apiError.successError(true, 'algorithm executed'));
+    } else {
+      return res.json(check);
+    }
   });
-  res.status(200).end();
 });
 
 /**************** Add Queries ****************/
 router.post('/AddCompany',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-
-  req.getConnection(function(err, connection) {
-    if (err) {
-      return res.json(apiError.queryError("500", err.toString(), data));
-    } else {
-      var company = {
-        companyName : data.companyName
-      };
-      queries.addCompany(dbconnect, company, function(err) {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      //console.log(req.body);
+      var data = JSON.parse(JSON.stringify(req.body));
+      req.getConnection(function(err, connection) {
         if (err) {
           return res.json(apiError.queryError("500", err.toString(), data));
         } else {
-          //console.log("Company added!");
-          queries.getLastCompany(dbconnect, function(err, results) {
+          var company = {
+            companyName : data.companyName
+          };
+          queries.addCompany(dbconnect, company, function(err) {
             if (err) {
               return res.json(apiError.queryError("500", err.toString(), data));
             } else {
-              //console.log("Last company ID retrieved");
-              //console.log(results);
-              queries.addAllSuperadminToCompany(dbconnect, results[0].companyID);
+              //console.log("Company added!");
+              queries.getLastCompany(dbconnect, function(err, results) {
+                if (err) {
+                  return res.json(apiError.queryError("500", err.toString(), data));
+                } else {
+                  //console.log("Last company ID retrieved");
+                  //console.log(results);
+                  queries.addAllSuperadminToCompany(dbconnect, results[0].companyID);
+                  return res.json(apiSuccess.successQuery(true, "Company added to seating_lucid_agency"));
+                }
+              });
             }
           });
         }
       });
+    } else {
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Company added to seating_lucid_agency"));
 });
 
 router.post('/AddCluster',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
 
-  req.getConnection(function(err, connection) {
-    if (err) {
-      return res.json(apiError.queryError("500", err.toString(), data));
+      req.getConnection(function(err, connection) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var cluster = {
+            xcoordinate : data.xcoordinate,
+            ycoordinate : data.ycoordinate
+          };
+          queries.addCluster(dbconnect, cluster);
+          return res.json(apiSuccess.successQuery(true, "Cluster added to seating_lucid_agency"));
+        }
+      });
     } else {
-      var cluster = {
-        xcoordinate : data.xcoordinate,
-        ycoordinate : data.ycoordinate
-      };
-      queries.addCluster(dbconnect, cluster);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Cluster added to seating_lucid_agency"));
 });
 
 router.post('/AddDesk',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
 
-  req.getConnection(function(err, connection) {
-    if (err) {
-      return res.json(apiError.queryError("500", err.toString(), data));
+      req.getConnection(function(err, connection) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var desk = {
+            xcoordinate : data.xcoordinate,
+            ycoordinate : data.ycoordinate,
+            width : data.width,
+            height : data.height
+          };
+          queries.addDesk(dbconnect, desk);
+          return res.json(apiSuccess.successQuery(true, "Desk added to seating_lucid_agency"));
+        }
+      });
     } else {
-      var desk = {
-        xcoordinate : data.xcoordinate,
-        ycoordinate : data.ycoordinate,
-        width : data.width,
-        height : data.height
-      };
-      queries.addDesk(dbconnect, desk);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Desk added to seating_lucid_agency"));
 });
 
 router.post('/AddEmployee',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var officeID;
-  var companyID;
-  var permissionLevel;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var officeID;
+      var companyID;
+      var permissionLevel;
 
-  bcrypt.genSalt(10, function(err, salt) {
-    bcrypt.hash(data.password, salt, function(err, hash) {
-      req.getConnection(function(err, connection) {
-        var employee = {
-          firstName : data.firstName,
-          lastName : data.lastName,
-          email : data.email,
-          password : hash,
-          department : data.department,
-          title : data.title,
-          restroomUsage : data.restroomUsage,
-          noisePreference : data.noisePreference,
-          outOfDesk : data.outOfDesk,
-          pictureAddress : data.pictureAddress,
-          permissionLevel : data.permissionLevel
-        };
-        officeID = data.officeID;
-        companyID = data.companyID;
-        permissionLevel = data.permissionLevel;
-        queries.addEmployee(dbconnect, employee, function (err) {
-          if (err) {
-            return res.json(apiError.queryError("500", err.toString(), data));
-          } else {
-            queries.getUser(dbconnect, {email: data.email}, function(err, results) {
+      bcrypt.genSalt(10, function(err, salt) {
+        bcrypt.hash(data.password, salt, function(err, hash) {
+          req.getConnection(function(err, connection) {
+            var employee = {
+              firstName : data.firstName,
+              lastName : data.lastName,
+              email : data.email,
+              password : hash,
+              department : data.department,
+              title : data.title,
+              restroomUsage : data.restroomUsage,
+              noisePreference : data.noisePreference,
+              outOfDesk : data.outOfDesk,
+              pictureAddress : data.pictureAddress,
+              permissionLevel : data.permissionLevel
+            };
+            officeID = data.officeID;
+            companyID = data.companyID;
+            permissionLevel = data.permissionLevel;
+            queries.addEmployee(dbconnect, employee, function (err) {
               if (err) {
                 return res.json(apiError.queryError("500", err.toString(), data));
               } else {
-                var employeeID = results[0].employeeID;
-                if (isInt(officeID)) {
-                  queries.addEmployeeToOffice(dbconnect, {employeeKey : employeeID, officeKey : officeID});
-                }
-                if (isInt(companyID) && permissionLevel == "admin") {
-                  queries.addAdminToCompany(dbconnect, {admin_ID: employeeID, company_ID: companyID}, function (err) {
-                    if (err) {
-                      return res.json(apiError.queryError("500", err.toString(), data));
+                queries.getUser(dbconnect, {email: data.email}, function(err, results) {
+                  if (err) {
+                    return res.json(apiError.queryError("500", err.toString(), data));
+                  } else {
+                    var employeeID = results[0].employeeID;
+                    if (isInt(officeID)) {
+                      queries.addEmployeeToOffice(dbconnect, {employeeKey : employeeID, officeKey : officeID});
                     }
-                  });
-                } else if (isInt(companyID) && permissionLevel == "superadmin") {
-                  queries.addSuperadminToAllCompanies(dbconnect, employeeID);
-                }
-                if (isInt(data.temperatureRangeID)) {
-                  queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
-                }
-                var item = 0;
-                for (item in data.teammates) {
-                  queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: data.teammates[item].employeeID});
-                }
-                for (item in data.blacklist) {
-                  queries.addToBlackList(dbconnect, {idemployee_blacklist: employeeID, employee_blacklist_teammate_id: data.blacklist[item].employeeID});
-                }
-                for (item in data.whitelist) {
-                  queries.addToWhiteList(dbconnect, {idemployee_whitelist: employeeID, employee_whitelist_teammate_id: data.whitelist[item].employeeID});
-                }
+                    if (isInt(companyID) && permissionLevel == "admin") {
+                      queries.addAdminToCompany(dbconnect, {admin_ID: employeeID, company_ID: companyID}, function (err) {
+                        if (err) {
+                          return res.json(apiError.queryError("500", err.toString(), data));
+                        }
+                      });
+                    } else if (isInt(companyID) && permissionLevel == "superadmin") {
+                      queries.addSuperadminToAllCompanies(dbconnect, employeeID);
+                    }
+                    if (isInt(data.temperatureRangeID)) {
+                      queries.addRangeToEmployee(dbconnect, {employeeID: employeeID, rangeID: data.temperatureRangeID});
+                    }
+                    var item = 0;
+                    for (item in data.teammates) {
+                      queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: data.teammates[item].employeeID});
+                    }
+                    for (item in data.blacklist) {
+                      queries.addToBlackList(dbconnect, {idemployee_blacklist: employeeID, employee_blacklist_teammate_id: data.blacklist[item].employeeID});
+                    }
+                    for (item in data.whitelist) {
+                      queries.addToWhiteList(dbconnect, {idemployee_whitelist: employeeID, employee_whitelist_teammate_id: data.whitelist[item].employeeID});
+                    }
+                    return res.json(apiSuccess.successQuery(true, "Employee added to seating_lucid_agency"));
+                  }
+                });
               }
             });
-          }
+          });
         });
       });
-    });
+    } else {
+      return res.json(check);
+    }
   });
-  res.json(apiSuccess.successQuery(true, "Employee added to seating_lucid_agency"));
 });
 
 router.post('/AddEmployees',function(req, res, next) {
-  var values = JSON.parse(JSON.stringify(req.body));
-  var officeID = values.officeID;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var values = JSON.parse(JSON.stringify(req.body));
+      var officeID = values.officeID;
 
-  values = values.employees;
-  for (var data in values) {
-    var salt = bcrypt.genSaltSync(10);
-    var hash = bcrypt.hashSync(values[data].password, salt);
-    var employee = {
-      firstName : values[data].firstName,
-      lastName : values[data].lastName,
-      email : values[data].email,
-      password : hash,
-      department : values[data].department,
-      title : values[data].title,
-      restroomUsage : values[data].restroomUsage,
-      noisePreference : values[data].noisePreference,
-      outOfDesk : values[data].outOfDesk,
-      pictureAddress : values[data].pictureAddress,
-      permissionLevel : values[data].permissionLevel
-    };
-    queries.addEmployeeSync(dbconnect, employee, officeID);
-  }
-  res.json(apiSuccess.successQuery(true, "Employees added to seating_lucid_agency from CSV"));
+      values = values.employees;
+      for (var data in values) {
+        var salt = bcrypt.genSaltSync(10);
+        var hash = bcrypt.hashSync(values[data].password, salt);
+        var employee = {
+          firstName : values[data].firstName,
+          lastName : values[data].lastName,
+          email : values[data].email,
+          password : hash,
+          department : values[data].department,
+          title : values[data].title,
+          restroomUsage : values[data].restroomUsage,
+          noisePreference : values[data].noisePreference,
+          outOfDesk : values[data].outOfDesk,
+          pictureAddress : values[data].pictureAddress,
+          permissionLevel : values[data].permissionLevel
+        };
+        queries.addEmployeeSync(dbconnect, employee, officeID);
+        return res.json(apiSuccess.successQuery(true, "Employees added to seating_lucid_agency from CSV"));
+      }
+    } else {
+      return res.json(check);
+    }
+  });
 });
 
 router.post('/AddAdminToCompany',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var adder = {
-    admin_ID : data.employeeID,
-    company_ID : data.companyID
-  };
-  queries.addAdminToCompany(dbconnect, adder, function(err) {
-    if (err) {
-      return res.json(apiError.queryError("500", err.toString(), data));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var adder = {
+        admin_ID : data.employeeID,
+        company_ID : data.companyID
+      };
+      queries.addAdminToCompany(dbconnect, adder, function(err) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          return res.json(apiSuccess.successQuery(true, "Admin added to company in seating_lucid_agency"));
+        }
+      });
+    } else {
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Admin added to company in seating_lucid_agency"));
 });
 
 router.post('/AddEmployeeToOffice',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
 
-  req.getConnection(function(err, connection) {
-    if (err) {
-      return res.json(apiError.queryError("500", err.toString(), data));
+      req.getConnection(function(err, connection) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var adder = {
+            employeeKey : data.employeeID,
+            officeKey : data.officeID
+          };
+          queries.addEmployeeToOffice(dbconnect, adder);
+          return res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
+        }
+      });
     } else {
-      var adder = {
-        employeeKey : data.employeeID,
-        officeKey : data.officeID
-      };
-      queries.addEmployeeToOffice(dbconnect, adder);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
 });
 
 router.post('/AddInitialOfficeWithEmployee',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var office = {
-    officeName: data.officeName,
-    officePhoneNumber: data.officePhoneNumber,
-    officeEmail: data.officeEmail,
-    officeStreetAddress: data.officeStreetAddress,
-    officeCity: data.officeCity,
-    officeState: data.officeState,
-    officeZipcode: data.officeZipcode
-  };
-  var employeeID = data.employeeID;
-  var officeID = 0;
-  var companyID = data.companyID;
-  var adder1;
-  var adder2;
-
-  req.getConnection(function(err, connection) {
-    queries.addOffice(dbconnect, office, function(err) {
-      if (err) {
-        res.json(apiError.queryError("500", err.toString(), data));
-      } else {
-        queries.getMostRecentOffice(dbconnect, function(err, results) {
-          if (err) {
-            res.json(apiError.queryError("500", err.toString(), data));
-          } else {
-            officeID = results[0].officeID;
-            adder1 = {
-              employeeKey : employeeID,
-              officeKey : officeID
-            };
-            adder2 = {
-              IDforOffice : officeID,
-              IDforCompany : companyID
-            };
-            queries.addEmployeeToOffice(dbconnect, adder1);
-            queries.addOfficeToCompany(dbconnect, adder2);
-          }
-        });
-      }
-    });
-  });
-  res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
-});
-
-router.post('/AddOffice',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
       var office = {
         officeName: data.officeName,
         officePhoneNumber: data.officePhoneNumber,
@@ -684,254 +794,372 @@ router.post('/AddOffice',function(req, res, next) {
         officeState: data.officeState,
         officeZipcode: data.officeZipcode
       };
+      var employeeID = data.employeeID;
+      var officeID = 0;
       var companyID = data.companyID;
-      var officeID = 1;
-      var adder;
+      var adder1;
+      var adder2;
 
-      queries.addOffice(dbconnect, office, function(err) {
-        if (err) {
-          res.json(apiError.queryError("500", err.toString(), data));
-        } else {
-          queries.getMostRecentOffice(dbconnect, function(err, results) {
-            if (err) {
-              res.json(apiError.queryError("500", err.toString(), data));
-            } else {
-              officeID = results[0].officeID;
-              adder = {
-                IDforOffice : officeID,
-                IDforCompany : companyID
-              };
-              queries.addOfficeToCompany(dbconnect, adder);
-            }
-          });
-        }
-      });
-    }
-  });
-  res.json(apiSuccess.successQuery(true, "Office added in seating_lucid_agency"));
-});
-
-router.post('/AddOfficeEmployee',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-
-  bcrypt.genSalt(10, function(err, salt) {
-    bcrypt.hash(data.password, salt, function(err, hash) {
       req.getConnection(function(err, connection) {
-        var employee = {
-          firstName : data.firstName,
-          lastName : data.lastName,
-          email : data.email,
-          password : hash,
-          department : data.department,
-          title : data.title,
-          restroomUsage : data.restroomUsage,
-          noisePreference : data.noisePreference,
-          outOfDesk : data.outOfDesk,
-          pictureAddress : data.pictureAddress,
-          permissionLevel : data.permissionLevel
-        };
-        var officeID = data.officeID;
-        queries.addEmployee(dbconnect, employee, function (err) {
+        queries.addOffice(dbconnect, office, function(err) {
           if (err) {
-            return res.json(apiError.queryError("500", err.toString(), data));
+            res.json(apiError.queryError("500", err.toString(), data));
           } else {
-            queries.getUser(dbconnect, {email: data.email}, function(err, results) {
+            queries.getMostRecentOffice(dbconnect, function(err, results) {
               if (err) {
-                return res.json(apiError.queryError("500", err.toString(), data));
+                res.json(apiError.queryError("500", err.toString(), data));
               } else {
-                var employeeID = results[0].employeeID;
-                var adder = {
-                  employeeKey: employeeID,
+                officeID = results[0].officeID;
+                adder1 = {
+                  employeeKey : employeeID,
                   officeKey : officeID
                 };
-                queries.addEmployeeToOffice(dbconnect, adder);
+                adder2 = {
+                  IDforOffice : officeID,
+                  IDforCompany : companyID
+                };
+                //queries.addEmployeeToOffice(dbconnect, adder1);
+                queries.addOfficeToCompany(dbconnect, adder2);
+                return res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
               }
             });
           }
         });
       });
-    });
+    } else {
+      return res.json(check);
+    }
   });
-  res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
+});
+
+router.post('/AddOffice',function(req, res, next) {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var office = {
+            officeName: data.officeName,
+            officePhoneNumber: data.officePhoneNumber,
+            officeEmail: data.officeEmail,
+            officeStreetAddress: data.officeStreetAddress,
+            officeCity: data.officeCity,
+            officeState: data.officeState,
+            officeZipcode: data.officeZipcode
+          };
+          var companyID = data.companyID;
+          var officeID = 1;
+          var adder;
+
+          queries.addOffice(dbconnect, office, function(err) {
+            if (err) {
+              res.json(apiError.queryError("500", err.toString(), data));
+            } else {
+              queries.getMostRecentOffice(dbconnect, function(err, results) {
+                if (err) {
+                  res.json(apiError.queryError("500", err.toString(), data));
+                } else {
+                  officeID = results[0].officeID;
+                  adder = {
+                    IDforOffice : officeID,
+                    IDforCompany : companyID
+                  };
+                  queries.addOfficeToCompany(dbconnect, adder);
+                  return res.json(apiSuccess.successQuery(true, "Office added in seating_lucid_agency"));
+                }
+              });
+            }
+          });
+        }
+      });
+    } else {
+      return res.json(check);
+    }
+  });
+});
+
+router.post('/AddOfficeEmployee',function(req, res, next) {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+
+      bcrypt.genSalt(10, function(err, salt) {
+        bcrypt.hash(data.password, salt, function(err, hash) {
+          req.getConnection(function(err, connection) {
+            var employee = {
+              firstName : data.firstName,
+              lastName : data.lastName,
+              email : data.email,
+              password : hash,
+              department : data.department,
+              title : data.title,
+              restroomUsage : data.restroomUsage,
+              noisePreference : data.noisePreference,
+              outOfDesk : data.outOfDesk,
+              pictureAddress : data.pictureAddress,
+              permissionLevel : data.permissionLevel
+            };
+            var officeID = data.officeID;
+            queries.addEmployee(dbconnect, employee, function (err) {
+              if (err) {
+                return res.json(apiError.queryError("500", err.toString(), data));
+              } else {
+                queries.getUser(dbconnect, {email: data.email}, function(err, results) {
+                  if (err) {
+                    return res.json(apiError.queryError("500", err.toString(), data));
+                  } else {
+                    var employeeID = results[0].employeeID;
+                    var adder = {
+                      employeeKey: employeeID,
+                      officeKey : officeID
+                    };
+                    queries.addEmployeeToOffice(dbconnect, adder);
+                    return res.json(apiSuccess.successQuery(true, "Employee added to office in seating_lucid_agency"));
+                  }
+                });
+              }
+            });
+          });
+        });
+      });
+    } else {
+      return res.json(check);
+    }
+  });
 });
 
 router.post('/AddTeammatesToEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  userPermissionCheck(token, data.employeeID, function(check) {
+    if (check.success) {
 
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var adder = [];
+          var employeeID = data.employeeID;
+
+          for (var item in data.teammates) {
+            adder.push(item.employeeID);
+          }
+          for (var i in adder) {
+            queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: adder[i]});
+            return res.json(apiSuccess.successQuery(true, "Teammates added to employee in seating_lucid_agency"));
+          }
+        }
+      });
     } else {
-      var adder = [];
-      var employeeID = data.employeeID;
-
-      for (var item in data.teammates) {
-        adder.push(item.employeeID);
-      }
-      for (var i in adder) {
-        queries.addTeammate(dbconnect, {idemployee_teammates: employeeID, employee_teammate_id: adder[i]});
-      }
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Teammates added to employee in seating_lucid_agency"));
 });
 
 router.post('/AddTemperatureRange',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
 
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var temperatureRange = {
+            lower : data.lower,
+            upper : data.upper
+          };
+          queries.addRange(dbconnect, temperatureRange);
+          return res.json(apiSuccess.successQuery(true, "Temperature range added in seating_lucid_agency"));
+        }
+      });
     } else {
-      var temperatureRange = {
-        lower : data.lower,
-        upper : data.upper
-      };
-      queries.addRange(dbconnect, temperatureRange);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Temperature range added in seating_lucid_agency"));
 });
 
 router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
   var data = JSON.parse(JSON.stringify(req.body));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  userPermissionCheck(token, data.employeeID, function(check) {
+    if (check.success) {
 
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var adder = {
+            employeeID : data.employeeID,
+            rangeID : data.temperatureRangeID
+          };
+          queries.addRangeToEmployee(dbconnect, adder);
+          return res.json(apiSuccess.successQuery(true, "Temperature range added to employee in seating_lucid_agency"));
+        }
+      });
     } else {
-      var adder = {
-        employeeID : data.employeeID,
-        rangeID : data.temperatureRangeID
-      };
-      queries.addRangeToEmployee(dbconnect, adder);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Temperature range added to employee in seating_lucid_agency"));
 });
 
 // Routing for the Delete queries
 router.get('/DeleteCompany/:id', function(req, res) {
-  var ID = req.params.id;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var ID = req.params.id;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.getAllOfficesForOneCompany(dbconnect, ID, function(err, data) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Deleting Company: ", ID);
-      for (var item in data) {
-        queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
-          if (err) {
-            res.json(apiError.queryError("500", err.toString(), data));
-          } else if (env.logQueries) {
-            console.log("Delete office: ", data[item].officeID);
-            for (var i in result) {
-              if (result[i].permissionLevel != 'superadmin') {
-                queries.deleteEmployee(dbconnect, result[i].employeeID);
-              } else if (result[i].permissionLevel == 'superadmin') {
-                queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
-              }
-            }
-            queries.deleteOffice(dbconnect, ID);
-          } else {
-            for (var i in result) {
-              if (result[i].permissionLevel != 'superadmin') {
-                queries.deleteEmployee(dbconnect, result[i].employeeID);
-              } else if (result[i].permissionLevel == 'superadmin') {
-                queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
-              }
-            }
-            queries.deleteOffice(dbconnect, ID);
-          }
-        });
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
       }
-      queries.deleteCompany(dbconnect, ID);
+      queries.getAllOfficesForOneCompany(dbconnect, ID, function(err, data) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        } else if (env.logQueries) {
+          //console.log("Deleting Company: ", ID);
+          for (var item in data) {
+            queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
+              if (err) {
+                return res.json(apiError.queryError("500", err.toString(), data));
+              } else if (env.logQueries) {
+                //console.log("Delete office: ", data[item].officeID);
+                for (var i in result) {
+                  if (result[i].permissionLevel != 'superadmin') {
+                    queries.deleteEmployee(dbconnect, result[i].employeeID);
+                  } else if (result[i].permissionLevel == 'superadmin') {
+                    queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
+                  }
+                }
+                queries.deleteOffice(dbconnect, ID);
+              } else {
+                for (var i in result) {
+                  if (result[i].permissionLevel != 'superadmin') {
+                    queries.deleteEmployee(dbconnect, result[i].employeeID);
+                  } else if (result[i].permissionLevel == 'superadmin') {
+                    queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
+                  }
+                }
+                queries.deleteOffice(dbconnect, ID);
+              }
+            });
+          }
+          queries.deleteCompany(dbconnect, ID);
+          return res.json(apiSuccess.successQuery(true, "Company deleted in seating_lucid_agency"));
+        } else {
+          for (var item in data) {
+            queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
+              if (err) {
+                res.json(apiError.queryError("500", err.toString(), data));
+              } else if (env.logQueries) {
+                for (var i in result) {
+                  if (result[i].permissionLevel != 'superadmin') {
+                    queries.deleteEmployee(dbconnect, result[i].employeeID);
+                  } else if (result[i].permissionLevel == 'superadmin') {
+                    queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
+                  }
+                }
+                queries.deleteOffice(dbconnect, ID);
+              } else {
+                for (var i in result) {
+                  if (result[i].permissionLevel != 'superadmin') {
+                    queries.deleteEmployee(dbconnect, result[i].employeeID);
+                  } else if (result[i].permissionLevel == 'superadmin') {
+                    queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
+                  }
+                }
+                queries.deleteOffice(dbconnect, ID);
+              }
+            });
+          }
+          queries.deleteCompany(dbconnect, ID);
+          return res.json(apiSuccess.successQuery(true, "Company deleted in seating_lucid_agency"));
+        }
+      });
     } else {
-      for (var item in data) {
-        queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
-          if (err) {
-            res.json(apiError.queryError("500", err.toString(), data));
-          } else if (env.logQueries) {
-            for (var i in result) {
-              if (result[i].permissionLevel != 'superadmin') {
-                queries.deleteEmployee(dbconnect, result[i].employeeID);
-              } else if (result[i].permissionLevel == 'superadmin') {
-                queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
-              }
-            }
-            queries.deleteOffice(dbconnect, ID);
-          } else {
-            for (var i in result) {
-              if (result[i].permissionLevel != 'superadmin') {
-                queries.deleteEmployee(dbconnect, result[i].employeeID);
-              } else if (result[i].permissionLevel == 'superadmin') {
-                queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
-              }
-            }
-            queries.deleteOffice(dbconnect, ID);
-          }
-        });
-      }
-      queries.deleteCompany(dbconnect, ID);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Company deleted in seating_lucid_agency"));
 });
 
 router.get('/DeleteEmployee/:id', function(req, res) {
-  var ID = req.params.id;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var ID = req.params.id;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.deleteEmployee(dbconnect, ID);
-  res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      queries.deleteEmployee(dbconnect, ID);
+      return res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
+    } else {
+      return res.json(check);
+    }
+  });
 });
 
 router.get('/DeleteEmployeeFromOffice/:id', function(req, res) {
-  var ID = req.params.id;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var ID = req.params.id;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.deleteEmployeeFromOffice(dbconnect, ID);
-  res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      queries.deleteEmployeeFromOffice(dbconnect, ID);
+      return res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
+    } else {
+      return res.json(check);
+    }
+  });
 });
 
 router.get('/DeleteOffice/:id', function(req, res) {
-  var ID = req.params.id;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var ID = req.params.id;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.getAllEmployeesForOneOfficeConfidential(dbconnect, ID, function(err, data) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else if (env.logQueries) {
-      console.log("Delete office: ", ID);
-      for (var item in data) {
-        if (data[item].permissionLevel != 'superadmin') {
-          queries.deleteEmployee(dbconnect, data[item].employeeID);
-        } else if (data[item].permissionLevel == 'superadmin') {
-          queries.deleteEmployeeFromOffice(dbconnect, data[item].employeeID);
-        }
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
       }
-      queries.deleteOffice(dbconnect, ID);
+      queries.getAllEmployeesForOneOfficeConfidential(dbconnect, ID, function(err, data) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else if (env.logQueries) {
+          //console.log("Delete office: ", ID);
+          for (var item in data) {
+            if (data[item].permissionLevel != 'superadmin') {
+              queries.deleteEmployee(dbconnect, data[item].employeeID);
+            } else if (data[item].permissionLevel == 'superadmin') {
+              queries.deleteEmployeeFromOffice(dbconnect, data[item].employeeID);
+            }
+          }
+          queries.deleteOffice(dbconnect, ID);
+        } else {
+          for (var item in data) {
+            if (data[item].permissionLevel != 'superadmin') {
+              queries.deleteEmployee(dbconnect, data[item].employeeID);
+            } else if (data[item].permissionLevel == 'superadmin') {
+              queries.deleteEmployeeFromOffice(dbconnect, data[item].employeeID);
+            }
+          }
+          queries.deleteOffice(dbconnect, ID);
+          return res.json(apiSuccess.successQuery(true, "Office deleted in seating_lucid_agency"));
+        }
+      });
     } else {
-      for (var item in data) {
-        if (data[item].permissionLevel != 'superadmin') {
-          queries.deleteEmployee(dbconnect, data[item].employeeID);
-        } else if (data[item].permissionLevel == 'superadmin') {
-          queries.deleteEmployeeFromOffice(dbconnect, data[item].employeeID);
-        }
-      }
-      queries.deleteOffice(dbconnect, ID);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Office deleted in seating_lucid_agency"));
 });
 
 router.get('/DeletePasswordResetForEmployee/:employeeID', function(req, res) {
@@ -945,166 +1173,220 @@ router.get('/DeletePasswordResetForEmployee/:employeeID', function(req, res) {
 });
 
 router.get('/DeleteAdminFromCompany/:adminID/:companyID', function(req, res) {
-  var admin_ID = req.params.adminID;
-  var company_ID = req.params.companyID;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var admin_ID = req.params.adminID;
+      var company_ID = req.params.companyID;
 
-  if (!isInt(admin_ID) || !isInt(company_ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.deleteAdminToCompany(dbconnect, admin_ID, company_ID);
-  res.json(apiSuccess.successQuery(true, "Admin " + admin_ID + " deleted from company " + company_ID));
+      if (!isInt(admin_ID) || !isInt(company_ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      queries.deleteAdminToCompany(dbconnect, admin_ID, company_ID);
+      return res.json(apiSuccess.successQuery(true, "Admin " + admin_ID + " deleted from company " + company_ID));
+    } else {
+      return res.json(check);
+    }
+  });
 });
 
 router.get('/DeleteEntireBlackListForEmployee/:id', function(req, res) {
   var ID = req.params.id;
-
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.deleteEntireBlackListForEmploye(dbconnect, ID);
-  res.json(apiSuccess.successQuery(true, "Blacklist deleted in seating_lucid_agency for employee " + ID));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  userPermissionCheck(token, ID, function(check) {
+    if (check.success) {
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      queries.deleteEntireBlackListForEmploye(dbconnect, ID);
+      return res.json(apiSuccess.successQuery(true, "Blacklist deleted in seating_lucid_agency for employee " + ID));
+    } else {
+      return res.json(check);
+    }
+  });
 });
 
 router.get('/DeleteEntireWhiteListForEmployee/:id', function(req, res) {
   var ID = req.params.id;
-
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.deleteEntireWhiteListForEmploye(dbconnect, ID);
-  res.json(apiSuccess.successQuery(true, "Whitelist deleted in seating_lucid_agency for employee " + ID));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  userPermissionCheck(token, ID, function(check) {
+    if (check.success) {
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      queries.deleteEntireWhiteListForEmploye(dbconnect, ID);
+      return res.json(apiSuccess.successQuery(true, "Whitelist deleted in seating_lucid_agency for employee " + ID));
+    } else {
+      return res.json(check);
+    }
+  });
 });
 
 router.get('/DeleteTemperatureRange/:id', function(req, res) {
-  var ID = req.params.id;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var ID = req.params.id;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  queries.deleteRange(dbconnect, ID);
-  res.json(apiSuccess.successQuery(true, "Temperature Range deleted in seating_lucid_agency"));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      queries.deleteRange(dbconnect, ID);
+      return res.json(apiSuccess.successQuery(true, "Temperature Range deleted in seating_lucid_agency"));
+    } else {
+      return res.json(check);
+    }
+  });
 });
 
 /**************** Edit Queries ****************/
 router.post('/EditCompany/:id', function(req, res) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var ID = req.params.id;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var ID = req.params.id;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var company = {
+            companyName : data.companyName
+          };
+          queries.editCompany(dbconnect, company, ID);
+          return res.json(apiSuccess.successQuery(true, "Company edited in seating_lucid_agency"));
+        }
+      });
     } else {
-      var company = {
-        companyName : data.companyName
-      };
-      queries.editCompany(dbconnect, company, ID);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Company edited in seating_lucid_agency"));
 });
 
 router.post('/UpdateCoworkers/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
-  var whitelist = data.whitelist;
-  var blacklist = data.blacklist;
-  var employee = null;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  userPermissionCheck(token, ID, function(check) {
+    if (check.success) {
+      var whitelist = data.whitelist;
+      var blacklist = data.blacklist;
+      var employee = null;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          queries.deleteEntireBlackListForEmployee(dbconnect, ID);
+          queries.deleteEntireWhiteListForEmployee(dbconnect, ID);
+          for (employee in blacklist) {
+            queries.addToBlackList(dbconnect, {idemployee_blacklist: ID, employee_blacklist_teammate_id: blacklist[employee].employeeID});
+          }
+          for (employee in whitelist) {
+            queries.addToWhiteList(dbconnect, {idemployee_whitelist: ID, employee_whitelist_teammate_id: whitelist[employee].employeeID});
+          }
+          return res.json(apiSuccess.successQuery(true, "Employee coworkers updated in seating_lucid_agency"));
+        }
+      });
     } else {
-      queries.deleteEntireBlackListForEmployee(dbconnect, ID);
-      queries.deleteEntireWhiteListForEmployee(dbconnect, ID);
-      for (employee in blacklist) {
-        queries.addToBlackList(dbconnect, {idemployee_blacklist: ID, employee_blacklist_teammate_id: blacklist[employee].employeeID});
-      }
-      for (employee in whitelist) {
-        queries.addToWhiteList(dbconnect, {idemployee_whitelist: ID, employee_whitelist_teammate_id: whitelist[employee].employeeID});
-      }
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Employee coworkers updated in seating_lucid_agency"));
 });
 
 router.post('/EditEmployee/:id', function(req, res) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var ID = req.params.id;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  userPermissionCheck(token, req.params.id, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var ID = req.params.id;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var employee = {
+            firstName : data.firstName,
+            lastName : data.lastName,
+            email : data.email,
+            department : data.department,
+            title : data.title,
+            restroomUsage : data.restroomUsage,
+            noisePreference : data.noisePreference,
+            outOfDesk : data.outOfDesk,
+            pictureAddress : data.pictureAddress,
+            haveUpdated : 1,
+            accountUpdated: (new Date)
+          };
+          queries.editEmployee(dbconnect, employee, ID);
+          return res.json(apiSuccess.successQuery(true, "Employee edited in seating_lucid_agency"));
+        }
+      });
     } else {
-      var employee = {
-        firstName : data.firstName,
-        lastName : data.lastName,
-        email : data.email,
-        department : data.department,
-        title : data.title,
-        restroomUsage : data.restroomUsage,
-        noisePreference : data.noisePreference,
-        outOfDesk : data.outOfDesk,
-        pictureAddress : data.pictureAddress,
-        haveUpdated : 1,
-        accountUpdated: (new Date)
-      };
-      queries.editEmployee(dbconnect, employee, ID);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Employee edited in seating_lucid_agency"));
 });
 
-router.post('/EditEmployeePermission/:id', function(req, res) {
-  console.log("got here");
-  var data = JSON.parse(JSON.stringify(req.body));
-  var ID = req.params.id;
-
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else {
-      var employee = {
-        permissionLevel: data.permissionLevel,
-        haveUpdated : 1,
-        accountUpdated: (new Date)
-      };
-      queries.editEmployee(dbconnect, employee, ID);
-    }
-  });
-  res.json(apiSuccess.successQuery(true, "Employee upgaded to admin in seating_lucid_agency"));
-});
+// router.post('/EditEmployeePermission/:id', function(req, res) {
+//   //console.log("got here");
+//   var data = JSON.parse(JSON.stringify(req.body));
+//   var ID = req.params.id;
+//
+//   if (!isInt(ID)) {
+//     return res.json(apiError.errors("400","Incorrect parameters"));
+//   }
+//   req.getConnection(function(err, connection) {
+//     if (err) {
+//       res.json(apiError.queryError("500", err.toString(), data));
+//     } else {
+//       var employee = {
+//         permissionLevel: data.permissionLevel,
+//         haveUpdated : 1,
+//         accountUpdated: (new Date)
+//       };
+//       queries.editEmployee(dbconnect, employee, ID);
+//     }
+//   });
+//   res.json(apiSuccess.successQuery(true, "Employee upgraded to admin in seating_lucid_agency"));
+// });
 
 router.post('/EditAdminToCompany/:id', function(req, res) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var ID = req.params.id;
-  var adder = {
-    admin_ID: data.employeeID,
-    company_ID: data.companyID
-  };
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var ID = req.params.id;
+      var adder = {
+        admin_ID: data.employeeID,
+        company_ID: data.companyID
+      };
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      req.getConnection(function(err, connection) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          queries.editAdminToCompany(dbconnect, adder, adder.admin_ID, ID);
+          return res.json(apiSuccess.successQuery(true, "Moved Admin #"+ adder.admin_ID + " to Company #" + adder.company_ID));
+        }
+      });
     } else {
-      queries.editAdminToCompany(dbconnect, adder, adder.admin_ID, ID);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Moved Admin #"+ adder.admin_ID + " to Company #" + adder.company_ID));
 });
 
 router.post('/EditEmployeeUpdatedForOffice/:id',function(req, res, next) {
@@ -1116,62 +1398,76 @@ router.post('/EditEmployeeUpdatedForOffice/:id',function(req, res, next) {
   }
   req.getConnection(function(err, connection) {
     if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      return res.json(apiError.queryError("500", err.toString(), data));
     } else {
       var office = {
         employeeUpdated: data.employeeUpdated
       };
       queries.editEmployeeUpdatedForOffice(dbconnect, office, ID);
+      return res.json(apiSuccess.successQuery(true, "Employee edited for office in seating_lucid_agency"));
     }
   });
-  res.json(apiSuccess.successQuery(true, "Employee edited for office in seating_lucid_agency"));
 });
 
 router.post('/EditEmployeeWorksAtOffice/:id', function(req, res) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var ID = req.params.id;
-  var adder = {
-    employeeKey: data.employeeID,
-    officeKey: data.officeID
-  };
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var ID = req.params.id;
+      var adder = {
+        employeeKey: data.employeeID,
+        officeKey: data.officeID
+      };
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      req.getConnection(function(err, connection) {
+        if (err) {
+          return res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          queries.editEmployeeToOffice(dbconnect, adder, adder.employeeKey, ID);
+          return res.json(apiSuccess.successQuery(true, "Moved Employee #"+ adder.employeeID + " to Office #" + adder.officeID));
+        }
+      });
     } else {
-      queries.editEmployeeToOffice(dbconnect, adder, adder.employeeKey, ID);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Moved Employee #"+ adder.employeeID + " to Office #" + adder.officeID));
 });
 
 router.post('/EditOffice/:id',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var ID = req.params.id;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  superadminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var ID = req.params.id;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var office = {
+            officeName: data.officeName,
+            officePhoneNumber: data.officePhoneNumber,
+            officeEmail: data.officeEmail,
+            officeStreetAddress: data.officeStreetAddress,
+            officeCity: data.officeCity,
+            officeState: data.officeState,
+            officeZipcode: data.officeZipcode
+          };
+          queries.editOffice(dbconnect, office, ID);
+          return res.json(apiSuccess.successQuery(true, "Office edited in seating_lucid_agency"));
+        }
+      });
     } else {
-      var office = {
-        officeName: data.officeName,
-        officePhoneNumber: data.officePhoneNumber,
-        officeEmail: data.officeEmail,
-        officeStreetAddress: data.officeStreetAddress,
-        officeCity: data.officeCity,
-        officeState: data.officeState,
-        officeZipcode: data.officeZipcode
-      };
-      queries.editOffice(dbconnect, office, ID);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Office edited in seating_lucid_agency"));
 });
 
 router.post('/EditPasswordReset/:id', function(req, res) {
@@ -1221,83 +1517,103 @@ router.post('/EditPasswordResetForEmployee/:id', function(req, res) {
 router.post('/EditEmployeePreferences/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
-  var temperatureRangeID = data.temperatureRangeID
-  var employee = {
-    restroomUsage : data.restroomUsage,
-    noisePreference : data.noisePreference,
-    outOfDesk : data.outOfDesk,
-    haveUpdated : 1,
-    accountUpdated: (new Date)
-  };
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  userPermissionCheck(token, ID, function(check) {
+    if (check.success) {
+      var temperatureRangeID = data.temperatureRangeID
+      var employee = {
+        restroomUsage : data.restroomUsage,
+        noisePreference : data.noisePreference,
+        outOfDesk : data.outOfDesk,
+        haveUpdated : 1,
+        accountUpdated: (new Date)
+      };
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  console.log("EmployeeID: " + ID + "\ntemperatureRangeID: " + temperatureRangeID);
-  req.getConnection(function(err, connection) {
-    if (err) {
-      return res.json(apiError.queryError("500", err.toString(), data));
-    } else {
-      queries.editEmployee(dbconnect, employee, ID);
-      queries.existsTemperatureRangeForEmployee(dbconnect, ID, function(err, result) {
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      //console.log("EmployeeID: " + ID + "\ntemperatureRangeID: " + temperatureRangeID);
+      req.getConnection(function(err, connection) {
         if (err) {
-          return res.json(apiError.queryError("500", err.toString(), result));
+          return res.json(apiError.queryError("500", err.toString(), data));
         } else {
-          //console.log(result[0]);
-          if (result[0].RESULT == 1) {
-            queries.editRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID}, ID);
-          } else {
-            queries.addRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID});
-          }
+          queries.editEmployee(dbconnect, employee, ID);
+          queries.existsTemperatureRangeForEmployee(dbconnect, ID, function(err, result) {
+            if (err) {
+              return res.json(apiError.queryError("500", err.toString(), result));
+            } else {
+              //console.log(result[0]);
+              if (result[0].RESULT == 1) {
+                queries.editRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID}, ID);
+              } else {
+                queries.addRangeToEmployee(dbconnect, {employeeID: ID, rangeID: temperatureRangeID});
+              }
+              return res.json(apiSuccess.successQuery(true, "Employee preferences updated in seating_lucid_agency"));
+            }
+          });
         }
       });
+    } else {
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Employee preferences updated in seating_lucid_agency"));
 });
 
 router.post('/EditEmployeeTeammates/:id', function(req, res) {
   var data = JSON.parse(JSON.stringify(req.body));
   var ID = req.params.id;
-  var teammates = data.teammates;
-  var employee = null;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  userPermissionCheck(token, ID, function(check) {
+    if (check.success) {
+      var teammates = data.teammates;
+      var employee = null;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
-    } else {
-      queries.deleteAllTeammatesForEmployee(dbconnect, ID);
-      for (employee in teammates) {
-        queries.addTeammate(dbconnect, {idemployee_teammates: ID, employee_teammate_id: teammates[employee].employeeID});
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
       }
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          queries.deleteAllTeammatesForEmployee(dbconnect, ID);
+          for (employee in teammates) {
+            queries.addTeammate(dbconnect, {idemployee_teammates: ID, employee_teammate_id: teammates[employee].employeeID});
+          }
+          return res.json(apiSuccess.successQuery(true, "Employee teammates updated in seating_lucid_agency"));
+        }
+      });
+    } else {
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Employee teammates updated in seating_lucid_agency"));
 });
 
-
 router.post('/EditTemperatureRange/:id',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var ID = req.params.id;
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var ID = req.params.id;
 
-  if (!isInt(ID)) {
-    return res.json(apiError.errors("400","Incorrect parameters"));
-  }
-  req.getConnection(function(err, connection) {
-    if (err) {
-      res.json(apiError.queryError("500", err.toString(), data));
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      req.getConnection(function(err, connection) {
+        if (err) {
+          res.json(apiError.queryError("500", err.toString(), data));
+        } else {
+          var temperatureRange = {
+            lower : data.lower,
+            upper : data.upper
+          };
+          queries.editRange(dbconnect, temperatureRange, ID);
+          return res.json(apiSuccess.successQuery(true, "Temperature range edited in seating_lucid_agency"));
+        }
+      });
     } else {
-      var temperatureRange = {
-        lower : data.lower,
-        upper : data.upper
-      };
-      queries.editRange(dbconnect, temperatureRange, ID);
+      return res.json(check);
     }
   });
-  res.json(apiSuccess.successQuery(true, "Temperature range edited in seating_lucid_agency"));
 });
 
 router.post('/UpdatePassword',function(req, res) {
@@ -1344,11 +1660,9 @@ router.post('/UpdatePassword',function(req, res) {
   });
 });
 
-
-
 router.post('/PasswordResetUpdate', function(req, res) {
+  //console.log(user);
   var user = JSON.parse(JSON.stringify(req.body));
-  console.log(user);
   queries.getOneEmployeeConfidential(dbconnect, user.employeeID, function(err, data) {
     var query = JSON.parse(JSON.stringify(data));
     if (err) {
@@ -1897,9 +2211,9 @@ router.get('/CompanyOfficesWithoutAnAdmin/:id',function(req, res, next) {
   if (!isInt(req.params.id)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
   }
-  console.log('Check 1');
+  //console.log('Check 1');
   queries.getAllOfficesWithoutAnAdminForOneCompany(dbconnect, req.params.id, function(err, data) {
-    console.log('Check 2');
+    //console.log('Check 2');
     if (err) {
       res.json(apiError.queryError("500", err.toString(), data));
     } else if (env.logQueries) {
