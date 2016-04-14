@@ -2,102 +2,53 @@ package algorithm;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.Random;
-import java.util.Scanner;
-import java.util.Collections;
 
-public class Alg {
+public class Alg{
 
 	private IOParser inputParser;
 	
-	public Chart Algorithm(File seatingChartFile, File employeeFile, File similarityFile, boolean defaultBool, boolean random, boolean chartJson, boolean employeeJson) throws FileNotFoundException{
-		//Code for reading from our test file:
+	public void Algorithm(File seatingChartFile, File employeeFile, File similarityFile, File outputFile) throws FileNotFoundException{
 		File employeeInputFile;
-		if(defaultBool){
-			employeeInputFile = new File("C:\\Users\\Jack Bankston\\Desktop\\EmployeeTestData.csv");
-		}
-		else{
-			employeeInputFile = employeeFile;
-		}
+		employeeInputFile = employeeFile;
 		
-
 		File chartInputFile;
-		if(defaultBool){
-			chartInputFile = new File("C:\\Users\\Jack Bankston\\Desktop\\ChartTestData.csv");
-		}
-		else{
-			chartInputFile = seatingChartFile;
-		}
+		chartInputFile = seatingChartFile;
 		
-		inputParser = new IOParser(employeeInputFile, chartInputFile, similarityFile, chartJson, employeeJson);
+		inputParser = new IOParser(employeeInputFile, chartInputFile, similarityFile);
 		
 		ArrayList<Employee> listOfEmployees = inputParser.getEmployeeArrayList();
 		int floorplan[][] = inputParser.getChartIntegerArray();
-		
-		
 		
 		Chart seatingChart = new Chart();
 		
 		//Handle SpecialLocations:
 		seatingChart.findSpecialLocations(floorplan);
-		//System.out.println("Number of special locations: " + seatingChart.getNumberOfSpecialLocations());
 		
 		//Handle Employees:
 		seatingChart.setNumberOfEmployees(listOfEmployees.size());
-		seatingChart.setEmployeeSimilaritiesArray(inputParser.getEmployeeSimilaritiesArray());
-		
-		/*if(similarityFile == null){
-			seatingChart.findEmployeeSimilarities(listOfEmployees);
-		}
-		else{
-			
-		}*/
+		seatingChart.setEmployeeSimilaritiesArray(inputParser.getEmployeeSimilaritiesArray(), listOfEmployees);
 		
 		//Handle Walls:
-		seatingChart.newFindWalls(floorplan);
-		//System.out.println("Number of walls: " + seatingChart.getNumberOfWalls());
-		//seatingChart.printWalls();
+		seatingChart.findWalls(floorplan);
 	
 		//Handle Clusters:
 		seatingChart.findClusters(floorplan);
 		seatingChart.findClusterSimilarities();
-		//seatingChart.printClusters();
-		
-		
-		if(random){
-			randomAssignment(seatingChart, listOfEmployees);
-			return seatingChart;
-		}
+		seatingChart.setSpecialLocationScores();
 	
 		oneDeskClusterAssignments(seatingChart,listOfEmployees);
 		Employee[][] pairs = findPairs(seatingChart, listOfEmployees);
 		double[][] pairToPairSimilarities = computePairToPairSimilarities(seatingChart.getEmployeeSimilaritiesArray(), pairs);		
-		//assignPairsToClusters(seatingChart,pairs,pairToPairSimilarities);
-		newAssignPairsToClusters(seatingChart,pairs,pairToPairSimilarities);
+		assignPairsToClusters(seatingChart,pairs,pairToPairSimilarities);
 		double[][] sharedSimilarities = computeSharedSimilarities(seatingChart, listOfEmployees);
-		assignToClusters(seatingChart, sharedSimilarities, listOfEmployees);
 		assignAllEmployees(seatingChart, sharedSimilarities, listOfEmployees);
+
 		
-		/*for(int i = 0; i < listOfEmployees.size(); i++){
-			System.out.println("Employee " + i + ": " + listOfEmployees.get(i).getTotalSimilarity());
-		}*/
-		
-		inputParser.createOutputFile(seatingChart);
-		
-		return seatingChart;
-	}
-	
-	public void printDistances(Chart chart){
-		System.out.println("DISTANCES:");
-		for(int i = 0; i < chart.getNumberOfClusters(); i++){
-			for(int j = 0; j < chart.getNumberOfClusters(); j++){
-				System.out.println("\t" + i + " to " + j + ": " + chart.getCluster(i).getMiddle().squaredDistanceToPoint(chart.getCluster(j).getMiddle()));
-			}
-		}
+		inputParser.createOutputFile(seatingChart, outputFile);
 	}
 		
 	//Returns an array with all of the pairs of employees. 
-	public Employee[][] findPairs(Chart chart, ArrayList<Employee> employees){
+	private Employee[][] findPairs(Chart chart, ArrayList<Employee> employees){
 		double similarities[][] = chart.getEmployeeSimilaritiesArray();
 		
 		//Find the most similar pairs, and assign one to each cluster in the chart. 
@@ -111,9 +62,7 @@ public class Alg {
 				numberOfOneDeskClusters++;
 			}
 		}
-		
-		//System.out.println("Number of one desk clusters: " + numberOfOneDeskClusters);
-		
+				
 		Employee pairedEmployees[][] = new Employee[chart.getNumberOfClusters() - numberOfOneDeskClusters][2];
 		
 		int numberOfEmployees = employees.size();
@@ -143,7 +92,7 @@ public class Alg {
 	}
 	
 	//Returns an array containing each pair's similarity to all of the other pairs.
-	public double[][] computePairToPairSimilarities(double[][] similarities, Employee[][] pairs){
+	private double[][] computePairToPairSimilarities(double[][] similarities, Employee[][] pairs){
 		double[][] pairToPair = new double[pairs.length][pairs.length]; 
 		double similarity1, similarity2;
 		
@@ -189,10 +138,53 @@ public class Alg {
 		return pairToPair;
 	}
 	
-	public void newAssignPairsToClusters(Chart chart, Employee[][] pairs, double[][] pairToPairSimilarities){
-		int numberOfPairs = pairToPairSimilarities.length;
+	private void assignPairsToClusters(Chart chart, Employee[][] pairs, double[][] pairToPairSimilarities){
 		int numberOfClusters = chart.getNumberOfClusters();
-		//System.out.println("Number of clusters: " + numberOfClusters);
+		int numberOfPairs = pairs.length;
+		
+		//First assign pairs that have bathroom usage > 7 to a cluster close to a bathroom
+		boolean flag = true;
+		double maxBathroom, maxClusterBathroom;
+		int maxPair, maxCluster;
+		int numberOfBathroomPairs = 0;
+		while(flag){
+			maxBathroom = 0;
+			maxPair = 0;
+			
+			for(int i = 0; i < numberOfPairs; i++){
+				if(pairs[i][0].waitingToBeAssigned()){
+					if((pairs[i][0].getRestroomUsage() + pairs[i][1].getRestroomUsage()) > maxBathroom){
+						maxBathroom = pairs[i][0].getRestroomUsage() + pairs[i][1].getRestroomUsage();
+						maxPair = i;
+					}
+				}
+			}
+			
+			if(maxBathroom > 6){
+				maxClusterBathroom = 0;
+				maxCluster = 0;
+				for(int i = 0; i < numberOfClusters; i++){
+					if(!chart.getCluster(i).hasBeenAssignedAPair()){
+						if(chart.getCluster(i).getRestroomScore() > maxClusterBathroom){
+							maxClusterBathroom = chart.getCluster(i).getRestroomScore();
+							maxCluster = i;
+						}						
+					}
+				}
+				if(maxClusterBathroom > 0){
+					chart.getCluster(maxCluster).assignPairOfEmployees(pairs[maxPair][0], pairs[maxPair][1]);
+					numberOfBathroomPairs++;
+				}
+				else{
+					flag = false;
+				}
+			}
+			else{
+				flag = false;
+			}
+		}
+		
+		numberOfClusters = numberOfClusters - numberOfBathroomPairs;
 		
 		Cluster currentMostSimilarPairOfClusters[];
 		int currentMostSimilarPairOfPairs[]; //Indexes of employees
@@ -210,7 +202,6 @@ public class Alg {
 				currentMostSimilarPairOfPairs = getMostSimilarPairOfPairs(pairToPairSimilarities, pairs);
 				firstPairIndex = currentMostSimilarPairOfPairs[0];
 				secondPairIndex = currentMostSimilarPairOfPairs[1];
-				//System.out.println("First pair: " + firstPairIndex + "\nSecond pair: " + secondPairIndex);
 				currentMostSimilarPairOfClusters[0].assignPairOfEmployees(pairs[firstPairIndex][0],pairs[firstPairIndex][1]);
 				currentMostSimilarPairOfClusters[1].assignPairOfEmployees(pairs[secondPairIndex][0],pairs[secondPairIndex][1]);
 				i++; //An extra increment, since two clusters were assigned this time instead of 1. 
@@ -233,7 +224,6 @@ public class Alg {
 				
 				secondPairIndex = currentMostSimilarPairOfPairs[1];
 				
-				//System.out.println("First pair: " + lockedPairIndex + "\nSecond pair: " + secondPairIndex);
 				currentMostSimilarPairOfClusters[1].assignPairOfEmployees(pairs[secondPairIndex][0],pairs[secondPairIndex][1]);
 			}
 			else{ //Scenario C
@@ -254,7 +244,6 @@ public class Alg {
 				
 				secondPairIndex = currentMostSimilarPairOfPairs[1];
 				
-				//System.out.println("First pair: " + secondPairIndex + "\nSecond pair: " + lockedPairIndex);
 				currentMostSimilarPairOfClusters[0].assignPairOfEmployees(pairs[secondPairIndex][0],pairs[secondPairIndex][1]);
 			}
 		}
@@ -273,7 +262,6 @@ public class Alg {
 				for(int j = 0; j < numberOfPairs; j++){
 					secondPairAvailable = pairs[j][0].waitingToBeAssigned();
 					if(pairToPairSimilarities[i][j] > maxSimilarity && secondPairAvailable){
-						//System.out.println("Max: " + maxSimilarity + " Pair 1: " + i + " Pair 2: " + j);
 						maxSimilarity = pairToPairSimilarities[i][j];
 						pair[0] = i;
 						pair[1] = j;
@@ -293,7 +281,6 @@ public class Alg {
 		for(int i = 0; i < numberOfPairs; i++){
 			pairAvailable = pairs[i][0].waitingToBeAssigned();
 			if(pairToPairSimilarities[lockedPair][i] > maxSimilarity && pairAvailable){
-				//System.out.println("Max: " + maxSimilarity + " Pair 1: " + lockedPair + " Pair 2: " + i);
 				maxSimilarity = pairToPairSimilarities[lockedPair][i];
 				pair[1] = i;
 			}
@@ -314,8 +301,6 @@ public class Alg {
 				lowestSimilarityEmployee.setPartOfPair(true);
 			}
 		}
-		
-
 	}
 	
 	private Employee getLowestSimilarityEmployee(ArrayList<Employee> employees){
@@ -355,58 +340,11 @@ public class Alg {
 		}
 		pair[0] = chart.getCluster(currMaxI);
 		pair[1] = chart.getCluster(currMaxJ);
-		//System.out.println("Clusters " + currMaxI + " and " + currMaxJ);
 		return pair;
 	}
 	
-	//Assigns pairs to clusters in the chart, based on the clusters' similarities to each other and the pairs'
-	//	similarities to each other.
-	public void assignPairsToClusters(Chart chart, Employee[][] pairs, double[][] pairToPairSimilarities){
-		//I have no proof that the below method is that great, but it will have to work for now:
-		
-		//Works as long as the number of pairs is the same as the number of clusters we're working with at this point.
-		int numberOfPairs = pairToPairSimilarities.length;
-		double pairToPairSums[][] = new double[2][numberOfPairs];
-		double clusterSums[][] = new double[2][numberOfPairs];
-		for(int i = 0; i < numberOfPairs; i++){
-			pairToPairSums[0][i] = i;
-			clusterSums[0][i] = i;
-			for(int j = 0; j < numberOfPairs; j++){
-				pairToPairSums[1][i] += pairToPairSimilarities[i][j];
-				clusterSums[1][i] += chart.getSpecificClusterSimilarity(i, j);
-			}
-		}
-		
-		//System.out.println("Pair to Pair Array (unsorted):");
-		//printSumArray(pairToPairSums);
-		//System.out.println("Pair to Pair Array (sorted):");
-		pairToPairSums = sortArrayOfSums(pairToPairSums);
-		//printSumArray(pairToPairSums);
-		
-		//System.out.println("Cluster Array (unsorted):");
-		//printSumArray(clusterSums);
-		//System.out.println("Cluster Array (sorted):");
-		clusterSums = sortArrayOfSums(clusterSums);
-		//printSumArray(clusterSums);
-		
-		//Okay, now we assign the most popular pair to the most popular cluster, and the 
-		//	second most popular pair to the second most popular cluster, and so on...
-		for(int i = 0; i < numberOfPairs; i++){
-			//Assign the pair at spot i in array of pairToPairSums to the cluster at 
-			//	spot i in the array of clusterSums;
-			chart.getCluster((int)clusterSums[0][i]).assignPairOfEmployees(pairs[(int)pairToPairSums[0][i]][0], pairs[(int)pairToPairSums[0][i]][1]);
-		}
-	}
-	
-	//For testing
-	public void printSumArray(double[][] sumArray){
-		for(int i = 0; i < sumArray[0].length; i++){
-			System.out.println("" + sumArray[0][i] + ": " + sumArray[1][i]);
-		}
-	}
-	
 	//For use within the assignPairsToClusters(...) method.
-	public double[][] sortArrayOfSums(double[][] arrayOfSums){
+	private double[][] sortArrayOfSums(double[][] arrayOfSums){
 		//Sort into descending order (using insertion sort):
 		double tempIndex, tempValue;
 		int j;
@@ -428,107 +366,13 @@ public class Alg {
 		return arrayOfSums;
 	}
 	
-	public void randomAssignment(Chart chart, ArrayList<Employee> employees){
-		//First we need a random list of numbers the same length as the employees ArrayList.
-		int numberOfEmployees = employees.size();
-		ArrayList<Integer> indices = new ArrayList<Integer>();
-		for(int i = 0; i < numberOfEmployees; i++){
-			indices.add(i);
-		}
-		
-		
-		Random rand = new Random();
-		
-		int numberOfShuffles = 0;
-		while(numberOfShuffles == 0){
-			numberOfShuffles = rand.nextInt(15);
-		}
-		
-		//Collections.shuffle(indices, rand);
-		
-		/*for(int i = 0; i < numberOfEmployees; i++){
-			System.out.print("" + indices.get(i) + " ");
-		}
-		System.out.println();
-		*/
-		
-		/*for(int i = 0; i < numberOfEmployees; i++){
-			System.out.print("" + indices.get(i) + " ");
-		}
-		System.out.println();*/
-		
-
-		for(int i = 0; i < numberOfShuffles; i++){
-			Random rand1 = new Random();
-			Collections.shuffle(indices, rand1); //That randomizes the list. I am very proud of this
-		}
-		
-		/*for(int i = 0; i < numberOfEmployees; i++){
-			System.out.print("" + indices.get(i) + " ");
-		}
-		System.out.println();*/
-		
-		//Now go through the list, and add employees to the Chart.
-		int counter = 0;
-		boolean waitingForPair;
-		for(int i = 0; i < chart.getNumberOfClusters(); i++){
-			waitingForPair = true;
-			if(chart.getCluster(i).onlyOneDesk()){
-				chart.getCluster(i).assignToDesk(employees.get(indices.get(counter)));
-				employees.get(indices.get(counter)).setPartOfPair(true);
-				counter++;
-			}
-			else{
-				while(chart.getCluster(i).getNumberOfOpenDesks() > 0){
-					if(waitingForPair){
-						chart.getCluster(i).assignPairOfEmployees(employees.get(indices.get(counter)), employees.get(indices.get(counter + 1)));
-						counter++;
-						counter++;
-						waitingForPair = false;
-					}
-					else{
-						chart.getCluster(i).assignToDesk(employees.get(indices.get(counter)));
-						counter++;
-					}
-				}
-			}
-		}
-	}
-	
-	public void computePairs(Chart chart, double[][] similarities, ArrayList<Employee> employees){
-		//Find the most similar pairs, and assign one to each cluster in the chart. 
-		double currentHighest;
-		int x = 0; 
-		int y = 0;
-		
-		int numberOfEmployees = employees.size();
-		for(int c = 0; c < chart.getNumberOfClusters(); c++){ //For each cluster
-			currentHighest = 0;
-			for(int i = 0; i < numberOfEmployees; i++){ //Go through every spot in the array.
-				for(int j = 0; j < numberOfEmployees; j++){
-					//If we've found a new highest pair and neither is already in a pair. 
-					if(similarities[i][j] > currentHighest && !employees.get(i).partOfPair() && !employees.get(j).partOfPair()){ 
-						currentHighest = similarities[i][j];
-						x = i;
-						y = j;
-					}
-				}
-			}	
-			//Time to assign the pair we've just found to the current cluster:
-			chart.getCluster(c).setPairedEmployee1(employees.get(x));
-			chart.getCluster(c).setPairedEmployee2(employees.get(y));
-			employees.get(x).setPartOfPair(true);
-			employees.get(y).setPartOfPair(true);
-		}	
-	}
-	
-	public double[][] computeSharedSimilarities(Chart chart, ArrayList<Employee> employees){
+	private double[][] computeSharedSimilarities(Chart chart, ArrayList<Employee> employees){
 		double[][] similarities = chart.getEmployeeSimilaritiesArray();
 		double[][] sharedSimilarities = chart.getEmployeeSimilaritiesArray();
 		
 		int pair1, pair2;
 		for(int i = 0; i < chart.getNumberOfClusters(); i++){
-			//System.out.println("i: " + i);
+			
 			pair1 = chart.getCluster(i).getPairedEmployee1().getSpotInArray();
 			pair2 = chart.getCluster(i).getPairedEmployee2().getSpotInArray();
 			
@@ -546,13 +390,12 @@ public class Alg {
 		return sharedSimilarities;
 	}
 	
-	public void assignAllEmployees(Chart chart, double[][] sharedSimilarities, ArrayList<Employee> employees){
+	private void assignAllEmployees(Chart chart, double[][] sharedSimilarities, ArrayList<Employee> employees){
 		// Okay, at this point, every cluster has been assigned a pair of employees. 
 		// - We want to iterate through all of the unchosen employees and assign them to clusters.
 		//		- But in what order?!
 		//			- Three ideas: random, least popular (overall) to most popular, most popular to least popular
-		//			- My gut feeling is that most popular to least popular might work best? I don't know. I know nothing.
-		//			- We need a better scoring system.
+		//			- My gut feeling is that most popular to least popular might work best.
 		
 		// Let's just try something.
 		// Let's do most popular to least popular.
@@ -566,7 +409,6 @@ public class Alg {
 		
 		// Getting an array in the correct form.
 		int numberOfEmployees = employees.size();
-		//System.out.println("Number of employees: " + numberOfEmployees);
 		double employeeTotalSimilarities[][] = new double[2][numberOfEmployees];
 		for(int i = 0; i < numberOfEmployees; i++){
 			employeeTotalSimilarities[0][i] = employees.get(i).getSpotInArray(); 
@@ -574,11 +416,7 @@ public class Alg {
 		}
 		
 		// Sort that array:
-		//System.out.println("Unsorted employee total similarities array:");
-		//printSumArray(employeeTotalSimilarities);
 		employeeTotalSimilarities = sortArrayOfSums(employeeTotalSimilarities);
-		//System.out.println("Sorted employee total similarities array:");
-		//printSumArray(employeeTotalSimilarities);
 		
 		//Assign employees to clusters.
 		int currentEmployeeId; //Not strictly necessary, but should make the code a little more readable.
@@ -586,7 +424,7 @@ public class Alg {
 		int indexOfCurrentHighestCluster;
 		for(int i = 0; i < numberOfEmployees; i++){
 			currentEmployeeId = (int) employeeTotalSimilarities[0][i];
-			//System.out.println("Current employee id: " + currentEmployeeId);
+	
 			if(employees.get(currentEmployeeId).waitingToBeAssigned()){ //Meaning it has not already been assigned a desk.
 				//Assign our employee to the pair to which it is the most similar.
 				currentHighestSimilarity = -1;
@@ -609,53 +447,6 @@ public class Alg {
 				//Assign the employee to the cluster. 
 				chart.getCluster(indexOfCurrentHighestCluster).assignToDesk(employees.get(currentEmployeeId));
 			}
-		}
-		
-		
+		}		
 	}
-	
-	public void assignToClusters(Chart chart, double[][] sharedSimilarities, ArrayList<Employee> employees){
-		int numberOfUnassignedEmployees = employees.size() - (chart.getNumberOfClusters() * 2);
-		
-		int numberOfAvailableClusters = 0;
-		for(int c = 0; c < chart.getNumberOfClusters(); c++){
-			if(chart.getCluster(c).getNumberOfOpenDesks() > 0){
-				numberOfAvailableClusters++;
-			}
-		}
-		
-		int pair1, candidate;
-		double currentMax;
-		while(numberOfUnassignedEmployees > 0 && numberOfAvailableClusters > 0){
-			for(int i = (chart.getNumberOfClusters() - 1); i >= 0; i--){ //Iterate through the clusters backwards.
-				pair1 = chart.getCluster(i).getPairedEmployee1().getSpotInArray();
-				currentMax = -1000; //Default, really bad similarity.
-				candidate = -1; //Default, empty candidate.
-				if(chart.getCluster(i).getNumberOfOpenDesks() > 0){
-					for(int j = 0; j < employees.size(); j++){
-						if(employees.get(j).waitingToBeAssigned()){ //If the current employee hasn't been assigned to a desk.
-							if(currentMax < sharedSimilarities[pair1][j]){
-								currentMax = sharedSimilarities[pair1][j];
-								candidate = j;
-							}
-						}
-					} //For j (Employees)
-					if(candidate == -1){
-						i = -1;
-						numberOfUnassignedEmployees = -1;
-					}
-					else{
-						//Assign employee at candidate spot to this cluster.
-						chart.getCluster(i).assignToDesk(employees.get(candidate));
-						numberOfUnassignedEmployees--;
-						if(chart.getCluster(i).getNumberOfOpenDesks() == 0){
-							numberOfAvailableClusters--;
-						}
-					}
-				}
-			} //For i (clusters)
-		} //While
-
-	}
-
 }

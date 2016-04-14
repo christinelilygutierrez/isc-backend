@@ -1,70 +1,66 @@
 package algorithm;
 import java.util.ArrayList;
 
-public class Employee {
+class Employee {
 	private int id;
 	private boolean partOfPair;
-	private ArrayList<Characteristic> characteristics;
+
 	private ArrayList<Employee> blacklist;
-	private int spotInArray;
+	private int spotInArray, restroomUsage, noisePreference, outOfDesk;
 	private boolean waitingToBeAssigned;
 	private double totalSimilarity; 
 	
-	public Employee(int idNum){
+	Employee(int idNum){
 		id = idNum;
-		characteristics = new ArrayList<Characteristic>();
 		blacklist = new ArrayList<Employee>();
 		partOfPair = false;
 		waitingToBeAssigned = true;
 		totalSimilarity = 0;
 	}
 	
-	public int getID(){
+	int getID(){
 		return id;
 	}
 	
-	public boolean partOfPair(){
+	boolean partOfPair(){
 		return partOfPair;
 	}
 	
-	public void setSpotInArray(int i){
+	void setSpotInArray(int i){
 		spotInArray = i;
 	}
 	
-	public int getSpotInArray(){
+	int getSpotInArray(){
 		return spotInArray;
 	}
 	
-	public double getTotalSimilarity(){
+	double getTotalSimilarity(){
 		return totalSimilarity;
 	}
 	
-	public void addToTotalSimilarity(double d){
+	void addToTotalSimilarity(double d){
 		totalSimilarity += d;
 	}
 	
 	//Returns true if the employee needs to be assigned. False otherwise.
-	public boolean waitingToBeAssigned(){
+	boolean waitingToBeAssigned(){
 		return waitingToBeAssigned;
 	}
 	
-	public void assigned(){
+	void assigned(){
 		waitingToBeAssigned = false;
 	}
 	
-	public void setPartOfPair(boolean b){
+	void setPartOfPair(boolean b){
 		partOfPair = b;
 	}
 	
-	public ArrayList<Characteristic> getCharacteristicList(){
-		return characteristics;
-	}
-	
-	public ArrayList<Employee> getBlacklist(){
+
+	ArrayList<Employee> getBlacklist(){
 		return blacklist;
 	}
 	
-	public boolean isOnBlacklist(Employee e){
+	boolean isOnBlacklist(Employee e){
 		for(int i = 0; i < blacklist.size(); i++){
 			if(blacklist.get(i).getID() == id){
 				return true;
@@ -74,7 +70,31 @@ public class Employee {
 		return false;
 	}
 	
-	public void addCharacteristic(Characteristic c){
-		characteristics.add(c);
+	void setID(int id){
+		this.id = id;
+	}
+
+	int getRestroomUsage() {
+		return restroomUsage;
+	}
+
+	void setRestroomUsage(int restroomUsage) {
+		this.restroomUsage = restroomUsage;
+	}
+
+	int getNoisePreference() {
+		return noisePreference;
+	}
+
+	void setNoisePreference(int noisePreference) {
+		this.noisePreference = noisePreference;
+	}
+
+	int getOutOfDesk() {
+		return outOfDesk;
+	}
+
+	void setOutOfDesk(int outOfDesk) {
+		this.outOfDesk = outOfDesk;
 	}
 }
