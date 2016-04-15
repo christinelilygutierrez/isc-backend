@@ -286,7 +286,17 @@ exports.getAllEmployees = function(connection, callback) {
 };
 
 exports.getAllEmployeesConfidential = function(connection, callback) {
-  connection.query('SELECT * FROM seating_lucid_agency.employee;', function(err, result) {
+  connection.query('SELECT seating_lucid_agency.employee.employeeID, seating_lucid_agency.employee.firstName, seating_lucid_agency.employee.lastName, seating_lucid_agency.employee.email, seating_lucid_agency.employee.department, seating_lucid_agency.employee.title, seating_lucid_agency.employee.restroomUsage, seating_lucid_agency.employee.noisePreference, seating_lucid_agency.employee.outOfDesk, seating_lucid_agency.employee.pictureAddress, seating_lucid_agency.employee.permissionLevel, seating_lucid_agency.employee.haveUpdated, seating_lucid_agency.employee.accountCreated, seating_lucid_agency.employee.accountUpdated  FROM seating_lucid_agency.employee;', function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, (result));
+    }
+  });
+};
+
+exports.getAllEmployeesNotSuperAdmin = function(connection, callback) {
+  connection.query('SELECT seating_lucid_agency.employee.employeeID, seating_lucid_agency.employee.firstName, seating_lucid_agency.employee.lastName, seating_lucid_agency.employee.email, seating_lucid_agency.employee.department, seating_lucid_agency.employee.title, seating_lucid_agency.employee.restroomUsage, seating_lucid_agency.employee.noisePreference, seating_lucid_agency.employee.outOfDesk, seating_lucid_agency.employee.pictureAddress FROM seating_lucid_agency.employee WHERE seating_lucid_agency.employee.permissionLevel <> "superadmin";', function(err, result) {
     if (err) {
       callback(err, null);
     } else {
@@ -366,7 +376,7 @@ exports.getOneEmployee = function(connection, employeeID, callback) {
 };
 
 exports.getOneEmployeeConfidential = function(connection, employeeID, callback) {
-  connection.query('SELECT * FROM seating_lucid_agency.employee WHERE employeeID = ?;', employeeID, function(err, result) {
+  connection.query('SELECT seating_lucid_agency.employee.employeeID, seating_lucid_agency.employee.firstName, seating_lucid_agency.employee.lastName, seating_lucid_agency.employee.email, seating_lucid_agency.employee.department, seating_lucid_agency.employee.title, seating_lucid_agency.employee.restroomUsage, seating_lucid_agency.employee.noisePreference, seating_lucid_agency.employee.outOfDesk, seating_lucid_agency.employee.pictureAddress, seating_lucid_agency.employee.permissionLevel, seating_lucid_agency.employee.haveUpdated, seating_lucid_agency.employee.accountCreated, seating_lucid_agency.employee.accountUpdated FROM seating_lucid_agency.employee WHERE employeeID = ?;', employeeID, function(err, result) {
     if (err) {
       callback(err, null);
     } else {
