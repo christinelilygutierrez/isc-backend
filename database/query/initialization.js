@@ -155,3 +155,13 @@ exports.existsTemperatureRangeForEmployee = function(connection, employeeID, cal
     }
   });
 };
+
+exports.verifyOfficeForEmployee = function(connection, employeeID, officeID, callback) {
+  connection.query('SELECT EXISTS (SELECT O.officeID FROM seating_lucid_agency.office AS O, seating_lucid_agency.works_at AS W, seating_lucid_agency.employee AS E WHERE O.officeID = W.officeKey AND W.employeeKey = E.employeeID AND E.employeeID = ? AND O.officeID = ? LIMIT 1) AS result;', [employeeID, officeID], function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, result);
+    }
+  });
+};

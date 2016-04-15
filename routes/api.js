@@ -48,12 +48,65 @@ function superadminPermissionCheck(token, callback) {
       } else {
         //console.log('decoded: ', decoded);
          queries.validatedToken(dbconnect, decoded.email, decoded.password, function(err, results) {
-           if (results[0].permissionLevel != 'superadmin') {
-             callback(apiError.successError(false, 'Permission Denied. superadmin access only'));
+           if (err) {
+            callback(apiError.successError(false, 'Token could not be associated with a valid employee'));
            } else {
-             callback(apiError.successError(true, 'superadmin verified'));
+             if (results[0].permissionLevel != 'superadmin') {
+               callback(apiError.successError(false, 'Permission Denied. superadmin access only'));
+             } else {
+               callback(apiError.successError(true, 'superadmin verified'));
+             }
            }
          });
+      }
+    });
+  } else {
+    callback(apiError.successError(false, 'No token provided'));
+  }
+};
+
+function superadminDeletePermissionCheck(token, employeeID, callback) {
+  if (token) {
+    //console.log('hi');
+    jwt.verify(token, env.key, function(err, decoded) {
+      if (err) {
+        //console.log('there');
+        callback(apiError.successError(false, 'Token authentication failure'));
+      } else {
+        //console.log('decoded: ', decoded);
+        queries.validateUser(dbconnect, decoded.email, decoded.password, employeeID, function(err, results) {
+          if (err) {
+           callback(apiError.successError(false, 'superadminDeletePermissionCheck failed'));
+         } else {
+           if (isEmpty(results)) {
+             callback(apiError.successError(false, 'Error: invalid parameters'));
+           } else {
+             employee1 = {employeeID : results[0].EID, permissionLevel: results[0].EP};
+             employee2 = {employeeID : results[0].AID, permissionLevel: results[0].AP};
+             if (employee1.permissionLevel == 'user') {
+               callback(apiError.successError(false, 'Permission denied. Must be superadmin'));
+             } else if (employee1.permissionLevel == 'admin') {
+               callback(apiError.successError(false, 'Permission denied. must be superadmin'));
+             } else if (employee1.permissionLevel == 'superadmin' && employee2.permissionLevel == 'superadmin' && employee1.employeeID != employee2.employeeID) {
+               callback(apiError.successError(false, 'Permission denied. superadmins cannot delete other superadmins'));
+             } else if (employee1.permissionLevel == 'superadmin'){
+               queries.isEmployeeLastSuperadmin(dbconnect, employee2.employeeID, function(err, data) {
+                 if (err) {
+                   callback(apiError.successError(false, 'superadminDeletePermissionCheck query failure with last superadmin'));
+                 } else {
+                   if (data[0].result == 0) {
+                     callback(apiError.successError(false, 'Last superadmin in system cannot be deleted'));
+                   } else {
+                     callback(apiError.successError(true, 'superadmin delete access granted'));
+                   }
+                 }
+               });
+             } else {
+               callback(apiError.successError(false, 'Permission denied. Invalid permission level'));
+             }
+           }
+         }
+        });
       }
     });
   } else {
@@ -71,12 +124,112 @@ function adminPermissionCheck(token, callback) {
       } else {
         //console.log('decoded: ', decoded);
          queries.validatedToken(dbconnect, decoded.email, decoded.password, function(err, results) {
-           if (results[0].permissionLevel != 'admin' && results[0].permissionLevel != 'superadmin') {
-             callback(apiError.successError(false, 'Permission Denied. admin required'));
+           if (err) {
+            callback(apiError.successError(false, 'adminPermissionCheck failed'));
+          } else {
+            if (results[0].permissionLevel != 'admin' && results[0].permissionLevel != 'superadmin') {
+              callback(apiError.successError(false, 'Permission Denied. admin required'));
+            } else {
+              callback(apiError.successError(true, 'admin verified'));
+            }
+          }
+        });
+      }
+    });
+  } else {
+    callback(apiError.successError(false, 'No token provided'));
+  }
+};
+
+function adminDeleteOfficePermissionCheck(token, officeID, callback) {
+  if (token) {
+    //console.log('hi');
+    jwt.verify(token, env.key, function(err, decoded) {
+      if (err) {
+        //console.log('there');
+        callback(apiError.successError(false, 'Token authentication failure'));
+      } else {
+        //console.log('decoded: ', decoded);
+        queries.validatedToken(dbconnect, decoded.email, decoded.password, function(err, results) {
+          if (err) {
+           callback(apiError.successError(false, 'adminDeleteOfficePermissionCheck failed'));
+         } else {
+           var employee = results[0];
+           if (employee.permissionLevel == 'superadmin') {
+             callback(apiError.successError(true, 'admin delete access granted'));
+           } else if (employee.permissionLevel == 'admin') {
+             queries.verifyOfficeForEmployee(dbconnect, employee.employeeID, officeID, function(err, results) {
+               if (err) {
+                callback(apiError.successError(false, 'adminDeleteOfficePermissionCheck failed office query'));
+              } else {
+                if (isEmpty(results)) {
+                  callback(apiError.successError(false, 'Error: invalid parameters'));
+                } else {
+                  if (results[0].result) {
+                    callback(apiError.successError(true, 'admin delete access granted'));
+                  } else {
+                    callback(apiError.successError(false, 'Permission denied. Cannot delete office of another admin'));
+                  }
+                }
+              }
+             });
            } else {
-             callback(apiError.successError(true, 'admin verified'));
+             callback(apiError.successError(false, 'Permission denied. Must be admin or superadmin'));
            }
-         });
+         }
+        });
+      }
+    });
+  } else {
+    callback(apiError.successError(false, 'No token provided'));
+  }
+};
+
+
+function adminDeletePermissionCheck(token, employeeID, callback) {
+  if (token) {
+    //console.log('hi');
+    jwt.verify(token, env.key, function(err, decoded) {
+      if (err) {
+        //console.log('there');
+        callback(apiError.successError(false, 'Token authentication failure'));
+      } else {
+        //console.log('decoded: ', decoded);
+        queries.validateUser(dbconnect, decoded.email, decoded.password, employeeID, function(err, results) {
+          if (err) {
+           callback(apiError.successError(false, 'adminDeletePermissionCheck failed'));
+         } else {
+           if (isEmpty(results)) {
+             callback(apiError.successError(false, 'Error: invalid parameters'));
+           } else {
+             employee1 = {employeeID : results[0].EID, permissionLevel: results[0].EP};
+             employee2 = {employeeID : results[0].AID, permissionLevel: results[0].AP};
+             if (employee1.permissionLevel == 'user') {
+               callback(apiError.successError(false, 'Permission denied. Must be an admin or superadmin'));
+             } else if (employee1.permissionLevel == 'admin' && employee2.permissionLevel == 'admin' && employee1.employeeID != employee2.employeeID) {
+               callback(apiError.successError(false, 'Permission denied. admins cannot delete other admins'));
+             } else if (employee1.permissionLevel == 'admin' && employee2.permissionLevel == 'superadmin') {
+               callback(apiError.successError(false, 'Permission denied. admins cannot delete superadmins'));
+             } else if (employee1.permissionLevel == 'superadmin' && employee2.permissionLevel == 'superadmin' && employee1.employeeID != employee2.employeeID) {
+               callback(apiError.successError(false, 'Permission denied. superadmins cannot delete other superadmins'));
+             } else if (employee1.permissionLevel == 'admin' || employee1.permissionLevel == 'superadmin') {
+               queries.isEmployeeLastSuperadmin(dbconnect, employee2.employeeID, function(err, data) {
+                 if (err) {
+                   callback(apiError.successError(false, 'superadminDeletePermissionCheck query failure with last superadmin'));
+                 } else {
+                   if (data[0].result == 0) {
+                     callback(apiError.successError(false, 'Last superadmin in system cannot be deleted'));
+                   } else {
+                     callback(apiError.successError(true, 'admin delete access granted'));
+                   }
+                 }
+               });
+             } else {
+               callback(apiError.successError(false, 'Permission denied. Invalid permission level'));
+             }
+           }
+         }
+        });
       }
     });
   } else {
@@ -96,25 +249,29 @@ function userPermissionCheck(token, employeeID, callback) {
       } else {
         //console.log('decoded: ', decoded);
         queries.validateUser(dbconnect, decoded.email, decoded.password, employeeID, function(err, results) {
-          if (isEmpty(results)) {
-            callback(apiError.successError(false, 'Error: invalid parameters'));
-          } else {
-            employee1 = {employeeID : results[0].EID, permissionLevel: results[0].EP};
-            employee2 = {employeeID : results[0].AID, permissionLevel: results[0].AP};
-            if (employee1.permissionLevel == 'user' && (employee2.permissionLevel == 'admin' || employee2.permissionLevel == 'superadmin')) {
-              callback(apiError.successError(false, 'Permission denied. Must be an admin or superadmin'));
-            } else if (employee1.permissionLevel == 'user' && employee2.permissionLevel == 'user' && employee1.employeeID != employee2.employeeID) {
-              callback(apiError.successError(false, 'Permission denied. users cannot edit other employees'));
-            } else if (employee1.permissionLevel == 'admin' && employee2.permissionLevel == 'admin' && employee1.employeeID != employee2.employeeID) {
-              callback(apiError.successError(false, 'Permission denied. admins cannot edit other admins'));
-            } else if (employee1.permissionLevel == 'admin' && employee2.permissionLevel == 'superadmin') {
-              callback(apiError.successError(false, 'Permission denied. admins cannot edit superadmins'));
-            } else if (employee1.permissionLevel == 'superadmin' && employee2.permissionLevel == 'superadmin' && employee1.employeeID != employee2.employeeID) {
-              callback(apiError.successError(false, 'Permission denied. superadmins cannot edit other superadmins'));
-            } else {
-              callback(apiError.successError(true, 'user access granted'));
-            }
-          }
+          if (err) {
+           callback(apiError.successError(false, 'userPermissionCheck failed'));
+         } else {
+           if (isEmpty(results)) {
+             callback(apiError.successError(false, 'Error: invalid parameters'));
+           } else {
+             employee1 = {employeeID : results[0].EID, permissionLevel: results[0].EP};
+             employee2 = {employeeID : results[0].AID, permissionLevel: results[0].AP};
+             if (employee1.permissionLevel == 'user' && (employee2.permissionLevel == 'admin' || employee2.permissionLevel == 'superadmin')) {
+               callback(apiError.successError(false, 'Permission denied. Must be an admin or superadmin'));
+             } else if (employee1.permissionLevel == 'user' && employee2.permissionLevel == 'user' && employee1.employeeID != employee2.employeeID) {
+               callback(apiError.successError(false, 'Permission denied. users cannot edit other employees'));
+             } else if (employee1.permissionLevel == 'admin' && employee2.permissionLevel == 'admin' && employee1.employeeID != employee2.employeeID) {
+               callback(apiError.successError(false, 'Permission denied. admins cannot edit other admins'));
+             } else if (employee1.permissionLevel == 'admin' && employee2.permissionLevel == 'superadmin') {
+               callback(apiError.successError(false, 'Permission denied. admins cannot edit superadmins'));
+             } else if (employee1.permissionLevel == 'superadmin' && employee2.permissionLevel == 'superadmin' && employee1.employeeID != employee2.employeeID) {
+               callback(apiError.successError(false, 'Permission denied. superadmins cannot edit other superadmins'));
+             } else {
+               callback(apiError.successError(true, 'user access granted'));
+             }
+           }
+         }
         });
       }
     });
@@ -726,8 +883,8 @@ router.post('/AddEmployees',function(req, res, next) {
           permissionLevel : values[data].permissionLevel
         };
         queries.addEmployeeSync(dbconnect, employee, officeID);
-        return res.json(apiSuccess.successQuery(true, "Employees added to seating_lucid_agency from CSV"));
       }
+      return res.json(apiSuccess.successQuery(true, "Employees added to seating_lucid_agency from CSV"));
     } else {
       return res.json(check);
     }
@@ -1090,7 +1247,24 @@ router.get('/DeleteCompany/:id', function(req, res) {
 
 router.get('/DeleteEmployee/:id', function(req, res) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  superadminPermissionCheck(token, function(check) {
+  superadminDeletePermissionCheck(token, req.params.id, function(check) {
+    if (check.success) {
+      var ID = req.params.id;
+
+      if (!isInt(ID)) {
+        return res.json(apiError.errors("400","Incorrect parameters"));
+      }
+      queries.deleteEmployee(dbconnect, ID);
+      return res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
+    } else {
+      return res.json(check);
+    }
+  });
+});
+
+router.get('/DeleteOfficeEmployee/:id', function(req, res) {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminDeletePermissionCheck(token, req.params.id, function(check) {
     if (check.success) {
       var ID = req.params.id;
 
@@ -1107,7 +1281,7 @@ router.get('/DeleteEmployee/:id', function(req, res) {
 
 router.get('/DeleteEmployeeFromOffice/:id', function(req, res) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  adminPermissionCheck(token, function(check) {
+  superadminPermissionCheck(token, req.params.id, function(check) {
     if (check.success) {
       var ID = req.params.id;
 
@@ -1124,7 +1298,8 @@ router.get('/DeleteEmployeeFromOffice/:id', function(req, res) {
 
 router.get('/DeleteOffice/:id', function(req, res) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  adminPermissionCheck(token, function(check) {
+  superadminPermissionCheck(token, function(check) {
+  //adminDeleteOfficePermissionCheck(token, req.params.id, function(check) {
     if (check.success) {
       var ID = req.params.id;
 
@@ -1190,37 +1365,37 @@ router.get('/DeleteAdminFromCompany/:adminID/:companyID', function(req, res) {
   });
 });
 
-router.get('/DeleteEntireBlackListForEmployee/:id', function(req, res) {
-  var ID = req.params.id;
-  var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  userPermissionCheck(token, ID, function(check) {
-    if (check.success) {
-      if (!isInt(ID)) {
-        return res.json(apiError.errors("400","Incorrect parameters"));
-      }
-      queries.deleteEntireBlackListForEmploye(dbconnect, ID);
-      return res.json(apiSuccess.successQuery(true, "Blacklist deleted in seating_lucid_agency for employee " + ID));
-    } else {
-      return res.json(check);
-    }
-  });
-});
-
-router.get('/DeleteEntireWhiteListForEmployee/:id', function(req, res) {
-  var ID = req.params.id;
-  var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  userPermissionCheck(token, ID, function(check) {
-    if (check.success) {
-      if (!isInt(ID)) {
-        return res.json(apiError.errors("400","Incorrect parameters"));
-      }
-      queries.deleteEntireWhiteListForEmploye(dbconnect, ID);
-      return res.json(apiSuccess.successQuery(true, "Whitelist deleted in seating_lucid_agency for employee " + ID));
-    } else {
-      return res.json(check);
-    }
-  });
-});
+// router.get('/DeleteEntireBlackListForEmployee/:id', function(req, res) {
+//   var ID = req.params.id;
+//   var token = req.body.token || req.query.token || req.headers['x-access-token'];
+//   userPermissionCheck(token, ID, function(check) {
+//     if (check.success) {
+//       if (!isInt(ID)) {
+//         return res.json(apiError.errors("400","Incorrect parameters"));
+//       }
+//       queries.deleteEntireBlackListForEmploye(dbconnect, ID);
+//       return res.json(apiSuccess.successQuery(true, "Blacklist deleted in seating_lucid_agency for employee " + ID));
+//     } else {
+//       return res.json(check);
+//     }
+//   });
+// });
+//
+// router.get('/DeleteEntireWhiteListForEmployee/:id', function(req, res) {
+//   var ID = req.params.id;
+//   var token = req.body.token || req.query.token || req.headers['x-access-token'];
+//   userPermissionCheck(token, ID, function(check) {
+//     if (check.success) {
+//       if (!isInt(ID)) {
+//         return res.json(apiError.errors("400","Incorrect parameters"));
+//       }
+//       queries.deleteEntireWhiteListForEmploye(dbconnect, ID);
+//       return res.json(apiSuccess.successQuery(true, "Whitelist deleted in seating_lucid_agency for employee " + ID));
+//     } else {
+//       return res.json(check);
+//     }
+//   });
+// });
 
 router.get('/DeleteTemperatureRange/:id', function(req, res) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
@@ -2042,6 +2217,19 @@ router.get('/AllEmployeesConfidential',function(req, res, next) {
   });
 });
 
+router.get('/AllEmployeesNotSuperadmin',function(req, res, next) {
+  queries.getAllEmployeesNotSuperAdmin(dbconnect, function(err, data) {
+    if (err) {
+      res.json(apiError.queryError("500", err.toString(), data));
+    } else if (env.logQueries) {
+      console.log("The list of employees that are not superadmins : ", data);
+      res.json(data);
+    } else {
+      res.json(data);
+    }
+  });
+});
+
 router.get('/AllFloorPlans',function(req, res, next) {
   queries.getAllFloorPlans(dbconnect, function(err, data) {
     if (err) {
@@ -2623,7 +2811,7 @@ router.get('/IsEmployeeSuperadmin/:id',function(req, res, next) {
 });
 
 router.get('/IsEmployeeLastSuperadmin/:id',function(req, res, next) {
-  console.log('hey');
+  //console.log('hey');
   if (!isInt(req.params.id)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
   }
