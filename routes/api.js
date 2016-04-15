@@ -1756,8 +1756,8 @@ router.post('/SendEmail',function(req, res, next) {
     client.sendEmail({
       "From": "info@lucidseat.com",
       "To": emailData.to,
-      "Subject": 'Welcome to DeskSeeker!',
-      "TextBody": "Welcome to DeskSeeker!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password
+      "Subject": 'Welcome to Lucid Seat!',
+      "TextBody": "Welcome to Lucid Seat!  Please login and update your preferences now to get the perfect desk for you!  Your password is :  "+emailData.password+" and you can login at lucidseat.com"
     });
   }
   //console.log("finished");

@@ -40,7 +40,7 @@ exports.dailyEmailJob = new cronJob( '38 22 * * *', function(){
           "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": 'Please Update Your Preferences',
-          "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
+          "TextBody": "It looks like you still haven't updated your preferences!  Please login to Lucid Seat now to update your profile!"
         });
       }
     }
@@ -69,7 +69,7 @@ exports.fiveDayEmailJob = new cronJob( '57 16 * * *', function(){
           "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": 'Please Update Your Preferences',
-          "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
+          "TextBody": "It looks like you still haven't updated your preferences!  Please login to Lucid Seat now to update your profile!"
         });
       }
     }
@@ -99,7 +99,7 @@ exports.tenDayEmailJob = new cronJob( '57 16 * * *', function(){
           "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": 'Please Update Your Preferences',
-          "TextBody": "It looks like you still haven't updated your preferences!  Please login to DeskSeeker now to update your profile!"
+          "TextBody": "It looks like you still haven't updated your preferences!  Please login to Lucid Seat now to update your profile!"
         });
       }
     }
@@ -128,7 +128,7 @@ exports.quarterlyEmailJob = new cronJob( '30 03 01 */3 *', function(){
           "From": "info@lucidseat.com",
           "To": val.email,
           "Subject": "It's Been Awhile...",
-          "TextBody": "Looks like you haven't updated your preferences in awhile!  If you need to update please login at DeskSeeker now!"
+          "TextBody": "Looks like you haven't updated your preferences in awhile!  If you need to update please login at Lucid Seat now!"
         });
       }
     }
