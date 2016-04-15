@@ -6,6 +6,7 @@ var env = require('../env');
 var exec = require('child_process').exec;
 var express = require('express');
 var fs = require('fs');
+var jsonfile = require('jsonfile');
 var jwt = require('jsonwebtoken');
 var moment = require('moment');
 var path = require('path');
@@ -3038,6 +3039,60 @@ router.delete('/SeatingCharts/:id', function(req, res, next) {
       console.log('Seating chart #' + req.params.id + ' removed from database.');
     }
     return res.json(result);
+  });
+});
+
+//
+// Populate Seating Chart
+//
+router.get('/SeatingCharts/:id/Populate', function(req, res, next) {
+  const id = req.params.id;
+  const wkdir = path.resolve(__dirname, '../seating_chart_algorithm');
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors('400', 'Incorrect parameters'));
+  }
+
+  // get seating chart
+  queries.getSeatingChart(dbconnect, id, function(err, data) {
+    if (err) {
+      console.log({err});
+      return res.json(apiError.queryError('500', err.toString(), data));
+    }
+
+    const seatingChart = data[0];
+
+    // write chart to file
+    jsonfile.writeFile(wkdir + '/tmp/chart.json', seatingChart.base_floor_plan, function(err) {
+      if (err) {
+        console.log({err});
+        return res.json(apiError.queryError('500', err.toString()));
+      }
+
+      // get office employees
+      queries.getAllEmployeesForOneOffice(dbconnect, req.params.id, function(err, data) {
+        if (err) {
+          console.log({err});
+          return res.json(apiError.queryError('500', err.toString(), data));
+        }
+
+        const officeEmployees = data;
+
+        // write employees to file
+        jsonfile.writeFile(wkdir + '/tmp/employees.json', officeEmployees, function(err) {
+          if (err) {
+            console.log({err});
+            return res.json(apiError.queryError('500', err.toString()));
+          }
+
+          // execute similarity algorithm, write to file
+          const similarityAlgorithm = require('../seating_chart_algorithm/similarity_algorithm');
+          // similarityAlgorithm.Start(function(err) {
+          //   //
+          // });
+          return res.json(apiError.queryError('500', 'Unable to populate seating chart'));
+        });
+      });
+    });
   });
 });
 

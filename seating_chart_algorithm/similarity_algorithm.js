@@ -67,11 +67,17 @@ function callWhiteList(ID1,ID2, score, total, officeID) {
       });
     });
   }
-  exports.Start= function() {
+  exports.Start= function(callback) {
     queries.getAllOffices(dbconnect, function(err, data) {
       var offices=data;
+      if (!offices || offices.length === 0) {
+        return callback('No offices to search');
+      }
       offices.forEach(function(office, key) {
         queries.getAllEmployeesForOneOfficeConfidential(dbconnect, office.officeID, function(err, data) {
+          if (err) {
+            return console.error(err); // continue to next office iteration
+          }
           emps = data;
           var total = ((emps.length * (emps.length -1))/2);
           var good = false;
