@@ -356,7 +356,7 @@ router.post('/AddPasswordReset',function(req, res, next) {
             "From": "info@lucidseat.com",
             "To": data[0].email,
             "Subject": 'Someone has Updated their Password',
-            "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+adder.token
+            "TextBody": "Please use the following URL to reset your password: lucidseat.com/password-reset/"+adder.token
           });
         });
 
@@ -1747,7 +1747,7 @@ router.post('/SendEmail',function(req, res, next) {
       "From": "info@lucidseat.com",
       "To": emailData.email,
       "Subject": 'Password Reset Requested!',
-      "TextBody": "Please use the following URL to reset your password: localhost:3000/password-reset/"+emailData.token
+      "TextBody": "Please use the following URL to reset your password: lucidseat.com/password-reset/"+emailData.token
     });
 
   } else if (emailData.reason ==='employeeAdd') {
