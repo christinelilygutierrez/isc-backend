@@ -65,18 +65,6 @@ CREATE TABLE floor_plan (\
   matrix longtext NOT NULL,\
   PRIMARY KEY (floor_planID)\
 );\
-CREATE TABLE floor_plans (\
-  id int(10) unsigned NOT NULL AUTO_INCREMENT,\
-  office_id int(10) unsigned NOT NULL,\
-  name varchar(55) NOT NULL DEFAULT 'New Design',\
-  cols int(10) unsigned NOT NULL,\
-  rows int(10) unsigned NOT NULL,\
-  spots text,\
-  created_at TIMESTAMP default CURRENT_TIMESTAMP,\
-  updated_at TIMESTAMP,\
-  PRIMARY KEY (id),\
-  CONSTRAINT office_id FOREIGN KEY (office_id) REFERENCES office (officeID) ON DELETE NO ACTION ON UPDATE NO ACTION\
-);\
 CREATE TABLE office (\
   officeID int(10) unsigned NOT NULL AUTO_INCREMENT,\
   officeName varchar(45) NOT NULL,\
@@ -88,6 +76,19 @@ CREATE TABLE office (\
   officeZipcode varchar(45) NOT NULL,\
   employeeUpdated tinyint(1) unsigned NOT NULL DEFAULT '0',\
   PRIMARY KEY (officeID)\
+);\
+CREATE TABLE floor_plans (\
+  id int(11) NOT NULL AUTO_INCREMENT,\
+  office_id int(10) unsigned NOT NULL,\
+  name varchar(55) NOT NULL DEFAULT 'New Design',\
+  cols int(10) unsigned NOT NULL,\
+  rows int(10) unsigned NOT NULL,\
+  spots text,\
+  created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,\
+  updated_at timestamp NULL DEFAULT NULL,\
+  PRIMARY KEY (id),\
+  KEY office_id (office_id),\
+  CONSTRAINT floor_plans_ibfk_1 FOREIGN KEY (office_id) REFERENCES office (officeID) ON DELETE NO ACTION ON UPDATE NO ACTION\
 );\
 CREATE TABLE seating_lucid_agency.range (\
   rangeID int(10) unsigned NOT NULL AUTO_INCREMENT,\
@@ -156,10 +157,11 @@ CREATE TABLE seating_charts (\
   id int(10) unsigned NOT NULL AUTO_INCREMENT,\
   name varchar(55) NOT NULL DEFAULT 'New Seating Chart',\
   base_floor_plan text,\
-  base_floor_plan_name varchar(55) NOT NULL DEFAULT 'Unknown Floor Plan',\
+  base_floor_plan_name varchar(55) DEFAULT NULL,\
   seating_chart text,\
-  created_at TIMESTAMP default CURRENT_TIMESTAMP,\
-  updated_at TIMESTAMP,\
+  office_id int(10) DEFAULT NULL,\
+  created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,\
+  updated_at timestamp NULL DEFAULT NULL,\
   PRIMARY KEY (id)\
 );\
 CREATE TABLE sits_at (\
