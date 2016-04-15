@@ -2689,34 +2689,85 @@ router.get('/PasswordResetForEmployee/:id',function(req, res, next) {
   });
 });
 
+//
+// Create Seating Chart
+//
 router.post('/SeatingCharts',function(req, res, next) {
-  var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  adminPermissionCheck(token, function(check) {
-    if (check.success) {
-      var data = JSON.parse(JSON.stringify(req.body));
-      req.getConnection(function(err, connection) {
-        if (err) {
-          return res.json(apiError.queryError('500', err.toString(), data));
-        } else {
-          queries.addSeatingChart(dbconnect, data);
-          return res.json(apiSuccess.successQuery(true, 'Seating chart added to seating_lucid_agency'));
-        }
-      });
-    } else {
-      return res.json(check);
+  var data = JSON.parse(JSON.stringify(req.body));
+  queries.addSeatingChart(dbconnect, data, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
     }
+    if (env.logQueries) {
+      console.log('Seating chart created', result);
+    }
+    return res.json(result);
   });
 });
 
+//
+// Read Seating Charts
+//
 router.get('/SeatingCharts', function(req, res, next) {
-  queries.getSeatingCharts(dbconnect, function(err, data) {
+  queries.getSeatingCharts(dbconnect, function(err, result) {
     if (err) {
-      return res.json(apiError.queryError('500', err.toString(), data));
+      return res.json(apiError.queryError('500', err.toString(), result));
     }
     if (env.logQueries) {
-      console.log('Seating Charts:' , data);
+      console.log('Seating Charts:' , result);
     }
-    return res.json(data);
+    return res.json(result);
+  });
+});
+
+//
+// Read Seating Chart
+//
+router.get('/SeatingCharts/:id', function(req, res, next) {
+  var id = req.params.id;
+  queries.getSeatingChart(dbconnect, id, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Seating Charts:' , result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Update Seating Chart
+//
+router.put('/SeatingCharts/:id', function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var id = req.params.id;
+  queries.updateSeatingChart(dbconnect, id, data, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Seating chart updated', result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Delete Seating Chart
+//
+router.delete('/SeatingCharts/:id', function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors('400', 'Incorrect parameters'));
+  }
+  queries.removeSeatingChart(dbconnect, req.params.id, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Seating chart #' + req.params.id + ' removed from database.');
+    }
+    return res.json(result);
   });
 });
 

@@ -22,14 +22,9 @@ const tableLoc = dbName + '.' + tableName;
  * @param {object} connection - The database connection object
  * @param {object} newSeatingChart - The new item to create
  */
-exports.addSeatingChart = function(connection, newSeatingChart) {
+exports.addSeatingChart = function(connection, newSeatingChart, callback) {
   connection.query('INSERT INTO ' + tableLoc + ' SET ?;', newSeatingChart, function(err, result) {
-    if (err && env.logErrors) {
-      return console.log(err);
-    }
-    if (env.logQueries) {
-      return console.log('New seating chart created', newSeatingChart);
-    }
+    return err ? callback(err) : callback(null, result);
   });
 };
 
@@ -41,34 +36,49 @@ exports.addSeatingChart = function(connection, newSeatingChart) {
  */
 exports.getSeatingCharts = function(connection, callback) {
   connection.query('SELECT * FROM ' + tableLoc, function(err, result) {
-    if (err) {
-      callback(err, null);
-    } else {
-      callback(null, (result));
-    }
+    return err ? callback(err) : callback(null, result);
   });
 };
 
-//
-// exports.deleteDesk = function(connection, id) {
-//   connection.query("DELETE FROM seating_lucid_agency.composed_of WHERE IDofDesk = ?;", id, function(err, result) {
-//     if (err && env.logErrors) {
-//       console.log(err);
-//     }
-//   });
-//   connection.query("DELETE FROM seating_lucid_agency.sits_at WHERE IDdesk = ?;", id, function(err, result) {
-//     if (err && env.logErrors) {
-//       console.log(err);
-//     }
-//   });
-//   connection.query("DELETE FROM seating_lucid_agency.desk WHERE deskID = ?;", id, function(err, result) {
-//     if (err && env.logErrors) {
-//       console.log(err);
-//     } else if (env.logQueries) {
-//       console.log("Desk %d deleted from database", id);
-//     }
-//   });
-// };
+/**
+ * Get an item in the collection
+ *
+ * @param {object} connection - The database connection object
+ * @param {number} id - The id of the item to retrieve
+ * @param {function} callback - The callback handler
+ */
+exports.getSeatingChart = function(connection, id, callback) {
+  connection.query('SELECT * FROM ' + tableLoc + ' WHERE id = ?;', id, function(err, result) {
+    return err ? callback(err) : callback(null, result);
+  });
+};
+
+/**
+ * Update an item in the collection
+ *
+ * @param {object} connection - The database connection object
+ * @param {number} id - The id of the item to update
+ * @param {object} newSeatingChart - The updated item
+ * @param {function} callback - The callback handler
+ */
+exports.updateSeatingChart = function(connection, id, newSeatingChart, callback) {
+  connection.query('UPDATE ' + tableLoc + ' SET ? WHERE id = ?;', [newSeatingChart, id], function(err, result) {
+    return err ? callback(err) : callback(null, result);
+  });
+};
+
+/**
+ * Remove an item from the collection
+ *
+ * @param {object} connection - The database connection object
+ * @param {number} id - The id of the item to delete
+ */
+exports.removeSeatingChart = function(connection, id, callback) {
+  connection.query('DELETE FROM ' + tableLoc + ' WHERE id = ?;', id, function(err, result) {
+    return err ? callback(err) : callback(null, result);
+  });
+};
+
 //
 // exports.editDesk = function(connection, values, id) {
 //   connection.query("UPDATE seating_lucid_agency.desk SET ? WHERE deskID = ?;", [values, id], function(err, result) {

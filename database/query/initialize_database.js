@@ -141,11 +141,12 @@ CREATE TABLE password_reset (\
   CONSTRAINT employee_ID FOREIGN KEY (employee_ID) REFERENCES employee (employeeID) ON DELETE NO ACTION ON UPDATE NO ACTION\
 );\
 CREATE TABLE seating_charts (\
-  id int(10) unsigned NOT NULL,\
+  id int(10) unsigned NOT NULL AUTO_INCREMENT,\
   office_id int(10) unsigned NOT NULL,\
   name varchar(55) NOT NULL DEFAULT 'New Design',\
   cols int(10) unsigned NOT NULL,\
   rows int(10) unsigned NOT NULL,\
+  spots text,\
   created_at TIMESTAMP default CURRENT_TIMESTAMP,\
   updated_at TIMESTAMP,\
   PRIMARY KEY (id),\
