@@ -2877,6 +2877,25 @@ router.get('/PasswordResetForEmployee/:id',function(req, res, next) {
   });
 });
 
+router.post('/SeatingCharts',function(req, res, next) {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      req.getConnection(function(err, connection) {
+        if (err) {
+          return res.json(apiError.queryError('500', err.toString(), data));
+        } else {
+          queries.addSeatingChart(dbconnect, data);
+          return res.json(apiSuccess.successQuery(true, 'Seating chart added to seating_lucid_agency'));
+        }
+      });
+    } else {
+      return res.json(check);
+    }
+  });
+});
+
 router.get('/SeatingCharts', function(req, res, next) {
   queries.getSeatingCharts(dbconnect, function(err, data) {
     if (err) {

@@ -17,6 +17,23 @@ const tableName = 'seating_charts';
 const tableLoc = dbName + '.' + tableName;
 
 /**
+ * Add an item to the collection
+ *
+ * @param {object} connection - The database connection object
+ * @param {object} newSeatingChart - The new item to create
+ */
+exports.addSeatingChart = function(connection, newSeatingChart) {
+  connection.query('INSERT INTO ' + tableLoc + ' SET ?;', newSeatingChart, function(err, result) {
+    if (err && env.logErrors) {
+      return console.log(err);
+    }
+    if (env.logQueries) {
+      return console.log('New seating chart created', newSeatingChart);
+    }
+  });
+};
+
+/**
  * Get the collection
  *
  * @param {object} connection - The database connection object
@@ -32,15 +49,6 @@ exports.getSeatingCharts = function(connection, callback) {
   });
 };
 
-// exports.addDesk = function(connection, values) {
-//   connection.query("INSERT INTO seating_lucid_agency.desk SET ?;", values, function(err, result) {
-//     if (err && env.logErrors) {
-//       console.log(err);
-//     } else if (env.logQueries) {
-//       console.log("Desk at coordinate (%f, %f) added to database", values[0], values[1]);
-//     }
-//   });
-// };
 //
 // exports.deleteDesk = function(connection, id) {
 //   connection.query("DELETE FROM seating_lucid_agency.composed_of WHERE IDofDesk = ?;", id, function(err, result) {
