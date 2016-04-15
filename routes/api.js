@@ -2778,6 +2778,88 @@ router.get('/FloorPlanOfOffice/:id',function(req, res, next) {
   });
 });
 
+//
+// Create Floor Plan
+//
+router.post('/FloorPlans',function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  queries.addFloorPlan(dbconnect, data, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Floor plan created', result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Read Floor Plans
+//
+router.get('/FloorPlans', function(req, res, next) {
+  queries.getFloorPlans(dbconnect, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Floor Plans:' , result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Read Floor Plan
+//
+router.get('/FloorPlans/:id', function(req, res, next) {
+  var id = req.params.id;
+  queries.getFloorPlan(dbconnect, id, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Floor Plans:' , result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Update Floor Plan
+//
+router.put('/FloorPlans/:id', function(req, res, next) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  var id = req.params.id;
+  queries.updateFloorPlan(dbconnect, id, data, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Floor plan updated', result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Delete Floor Plan
+//
+router.delete('/FloorPlans/:id', function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors('400', 'Incorrect parameters'));
+  }
+  queries.removeFloorPlan(dbconnect, req.params.id, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Floor plan #' + req.params.id + ' removed from database.');
+    }
+    return res.json(result);
+  });
+});
+
 router.get('/IsEmployeeAdmin/:id',function(req, res, next) {
   if (!isInt(req.params.id)) {
     return res.json(apiError.errors("400","Incorrect parameters"));

@@ -9,7 +9,7 @@ const dbName = 'seating_lucid_agency';
 /**
  * @var {string} - The table name
  */
-const tableName = 'seating_charts';
+const tableName = 'floor_plans';
 
 /**
  * @var {string} - The table location
@@ -20,10 +20,10 @@ const tableLoc = dbName + '.' + tableName;
  * Add an item to the collection
  *
  * @param {object} connection - The database connection object
- * @param {object} newSeatingChart - The new item to create
+ * @param {object} newFloorPlan - The new item to create
  */
-exports.addSeatingChart = function(connection, newSeatingChart, callback) {
-  connection.query('INSERT INTO ' + tableLoc + ' SET ?;', newSeatingChart, function(err, result) {
+exports.addFloorPlan = function(connection, newFloorPlan, callback) {
+  connection.query('INSERT INTO ' + tableLoc + ' SET ?;', newFloorPlan, function(err, result) {
     return err ? callback(err) : callback(null, result);
   });
 };
@@ -34,7 +34,7 @@ exports.addSeatingChart = function(connection, newSeatingChart, callback) {
  * @param {object} connection - The database connection object
  * @param {function} callback - The callback handler
  */
-exports.getSeatingCharts = function(connection, callback) {
+exports.getFloorPlans = function(connection, callback) {
   connection.query('SELECT * FROM ' + tableLoc, function(err, result) {
     return err ? callback(err) : callback(null, result);
   });
@@ -47,7 +47,7 @@ exports.getSeatingCharts = function(connection, callback) {
  * @param {number} id - The id of the item to retrieve
  * @param {function} callback - The callback handler
  */
-exports.getSeatingChart = function(connection, id, callback) {
+exports.getFloorPlan = function(connection, id, callback) {
   connection.query('SELECT * FROM ' + tableLoc + ' WHERE id = ?;', id, function(err, result) {
     return err ? callback(err) : callback(null, result);
   });
@@ -58,11 +58,11 @@ exports.getSeatingChart = function(connection, id, callback) {
  *
  * @param {object} connection - The database connection object
  * @param {number} id - The id of the item to update
- * @param {object} newSeatingChart - The updated item
+ * @param {object} newFloorPlan - The updated item
  * @param {function} callback - The callback handler
  */
-exports.updateSeatingChart = function(connection, id, newSeatingChart, callback) {
-  connection.query('UPDATE ' + tableLoc + ' SET ? WHERE id = ?;', [newSeatingChart, id], function(err, result) {
+exports.updateFloorPlan = function(connection, id, newFloorPlan, callback) {
+  connection.query('UPDATE ' + tableLoc + ' SET ? WHERE id = ?;', [newFloorPlan, id], function(err, result) {
     return err ? callback(err) : callback(null, result);
   });
 };
@@ -73,7 +73,7 @@ exports.updateSeatingChart = function(connection, id, newSeatingChart, callback)
  * @param {object} connection - The database connection object
  * @param {number} id - The id of the item to delete
  */
-exports.removeSeatingChart = function(connection, id, callback) {
+exports.removeFloorPlan = function(connection, id, callback) {
   connection.query('DELETE FROM ' + tableLoc + ' WHERE id = ?;', id, function(err, result) {
     return err ? callback(err) : callback(null, result);
   });
