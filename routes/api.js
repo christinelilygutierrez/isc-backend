@@ -3015,21 +3015,23 @@ router.get('/SeatingCharts/:id', function(req, res, next) {
     // TODO: get all office employees
     //
     const seatingChart = seatingCharts[0];
-    // add employee names to seating chart
-    var seatingChartJson = JSON.parse(seatingChart.seating_chart);
-    seatingChartJson = seatingChartJson.forEach(row => {
-      row = row.map(spot => {
-        if (spot.userId) {
-          // var employee = _.find(employees, {employeeID: spot.userId});
-          // if (employee) {
-          //   spot.userName = employee.firstName + ' ' + employee.lastName;
-          // }
-          spot.userName = 'John Doe';
-        }
-        return spot;
+    if (seatingChart.seating_chart) {
+      // add employee names to seating chart
+      var seatingChartJson = JSON.parse(seatingChart.seating_chart);
+      seatingChartJson = seatingChartJson.forEach(row => {
+        row = row.map(spot => {
+          if (spot.userId) {
+            // var employee = _.find(employees, {employeeID: spot.userId});
+            // if (employee) {
+            //   spot.userName = employee.firstName + ' ' + employee.lastName;
+            // }
+            spot.userName = 'John Doe';
+          }
+          return spot;
+        });
       });
-    });
-    seatingChart.seating_chart = JSON.stringify(seatingChartJson);
+      seatingChart.seating_chart = JSON.stringify(seatingChartJson);
+    }
     return res.json(seatingCharts);
   });
 });
