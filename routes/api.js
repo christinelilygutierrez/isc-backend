@@ -580,6 +580,14 @@ router.get('/DeletePasswordReset/:id', function(req, res) {
   res.json(apiSuccess.successQuery(true, "Temporary reset password deleted in seating_lucid_agency"));
 });
 
+router.get('/SimilarityAlgorithm/Execute', function(req, res, next) {
+  const calculateEmployeeSimilarities = require('../seating_chart_algorithm/calculate_employee_similarities');
+  const officeId = 1;
+  calculateEmployeeSimilarities.run(officeId, function(err, data) {
+    return res.json({err, data});
+  });
+});
+
 /**************** MUST HAVE CREDENTIALS FOR THE FOLLOWING HTTP METHODS ****************/
 router.use(function(req, res, next) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
@@ -2996,14 +3004,33 @@ router.get('/SeatingCharts', function(req, res, next) {
 //
 router.get('/SeatingCharts/:id', function(req, res, next) {
   var id = req.params.id;
-  queries.getSeatingChart(dbconnect, id, function(err, result) {
+  queries.getSeatingChart(dbconnect, id, function(err, seatingCharts) {
     if (err) {
-      return res.json(apiError.queryError('500', err.toString(), result));
+      return res.json(apiError.queryError('500', err.toString(), seatingCharts));
     }
     if (env.logQueries) {
-      console.log('Seating Charts:' , result);
+      console.log('Seating Charts:' , seatingCharts);
     }
-    return res.json(result);
+    //
+    // TODO: get all office employees
+    //
+    const seatingChart = seatingCharts[0];
+    // add employee names to seating chart
+    var seatingChartJson = JSON.parse(seatingChart.seating_chart);
+    seatingChartJson = seatingChartJson.forEach(row => {
+      row = row.map(spot => {
+        if (spot.userId) {
+          // var employee = _.find(employees, {employeeID: spot.userId});
+          // if (employee) {
+          //   spot.userName = employee.firstName + ' ' + employee.lastName;
+          // }
+          spot.userName = 'John Doe';
+        }
+        return spot;
+      });
+    });
+    seatingChart.seating_chart = JSON.stringify(seatingChartJson);
+    return res.json(seatingCharts);
   });
 });
 
@@ -3047,10 +3074,7 @@ router.delete('/SeatingCharts/:id', function(req, res, next) {
 //
 router.get('/SeatingCharts/:id/Populate', function(req, res, next) {
   const seatingChartId = req.params.id;
-  const wkdir = path.resolve(__dirname, '../seating_chart_algorithm');
-  const chartFile = wkdir + '/tmp/chart.json';
-  const employeeFile = wkdir + '/tmp/employees.json';
-  if (!isInt(req.params.id)) {
+  if (!isInt(seatingChartId)) {
     return res.json(apiError.errors('400', 'Incorrect parameters'));
   }
 
@@ -3062,72 +3086,55 @@ router.get('/SeatingCharts/:id/Populate', function(req, res, next) {
     }
 
     const seatingChart = data[0];
+    const algoDirPath = path.resolve(__dirname, '../seating_chart_algorithm');
+    const floorPlanFilePath = algoDirPath + '/tmp/floor-plan-' + seatingChart.id + '.json';
+    const outputFilePath = algoDirPath + '/tmp/seating-chart-' + seatingChart.id + '.json';
 
     // write chart to file
-    jsonfile.writeFile(chartFile, seatingChart.base_floor_plan, function(err) {
+    jsonfile.writeFile(floorPlanFilePath, JSON.parse(seatingChart.base_floor_plan), function(err) {
       if (err) {
         console.log({err});
         return res.json(apiError.queryError('500', err.toString()));
       }
 
-      // get office employees
-      queries.getAllEmployeesForOneOffice(dbconnect, seatingChart.office_id, function(err, data) {
+      // write employee & similarity data to tmp files
+      const calculateEmployeeSimilarities = require('../seating_chart_algorithm/calculate_employee_similarities');
+      calculateEmployeeSimilarities.run(seatingChart.office_id, function(err, employeeSimilaritiesResponse) {
         if (err) {
           console.log({err});
-          return res.json(apiError.queryError('500', err.toString(), data));
+          return res.json(apiError.queryError('500', err.toString()));
         }
 
-        const officeEmployees = data;
+        // execute the seating_chart_algorithm
+        const cmd = [
+          'java -jar ' + algoDirPath + '/Algorithm.jar',
+          floorPlanFilePath,
+          employeeSimilaritiesResponse.employeesFilePath,
+          employeeSimilaritiesResponse.similaritiesFilePath,
+          outputFilePath
+        ].join(' ');
 
-        // write employees to file
-        jsonfile.writeFile(employeeFile, officeEmployees, function(err) {
-          if (err) {
-            console.log({err});
-            return res.json(apiError.queryError('500', err.toString()));
+        exec(cmd, function(error, stdout, stderr) {
+          if (error || stderr) {
+            console.log({error, stdout, stderr});
+            return res.json(apiError.queryError('500', error ? error.toString() : stderr ? stderr.toString() : 'Error executing command to populate seating chart' ));
           }
 
-          // Read result of algorithm and return it to the program
-          const similarityFile = wkdir + '/similarity_files/' + seatingChart.office_id + '_similarity.json';
-          jsonfile.readFile(similarityFile, function(err) {
+          jsonfile.readFile(outputFilePath, function(err, file) {
             if (err) {
               console.log({err});
-              const similarity_algo = require('../seating_chart_algorithm/similarity_algorithm');
-              similarity_algo.Start();
-              return res.json(apiError.queryError('501', 'Populating similarity algorithms. Please restart command in one minute.'));
-            } else {
-              const address = path.join(__dirname + "./../seating_chart_algorithm");
-              const output = address + "/output/" + data.output;
-
-              var cmd = 'java -jar ' + address + '/Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile + ' ' + output;
-
-              // execute the seating_chart_algorithm
-              exec(cmd, function(error, stdout, stderr) {
-                if (error || stderr) {
-                  console.log({error, stdout, stderr});
-                  return res.json(apiError.queryError('500', error ? err.toString() : stderr ? stderr.toString() : 'Error executing command to populate seating chart' ));
-                }
-                jsonfile.readFile(output, function(err, file) {
-                  if (err) {
-                    console.log({err});
-                    return res.json(apiError.queryError('500', err.toString()));
-                  } else {
-                    queries.updateSeatingChart(dbconnect, seatingChartId, {seating_chart: JSON.stringify(file)}, function(err){
-                      if (err) {
-                        console.log({err});
-                        return res.json(apiError.queryError('500', err.toString()));
-                      } else {
-                        return res.json(JSON.stringify(file));
-                      }
-                    });
-                  }
-                });
-              });
+              return res.json(apiError.queryError('500', err.toString()));
             }
+
+            queries.updateSeatingChart(dbconnect, seatingChartId, {seating_chart: JSON.stringify(file)}, function(err) {
+              if (err) {
+                console.log({err});
+                return res.json(apiError.queryError('500', err.toString()));
+              } else {
+                return res.json(JSON.stringify(file));
+              }
+            });
           });
-          // similarityAlgorithm.Start(function(err) {
-          //   //
-          // });
-          return res.json(apiError.queryError('500', 'Unable to populate seating chart'));
         });
       });
     });

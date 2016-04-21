@@ -9,3 +9,6 @@ env.js
 node_modules/
 npm-debug.log
 
+# ignore algorithm-generated files
+seating_chart_algorithm/tmp/*
+!seating_chart_algorithm/tmp/README.md

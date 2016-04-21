@@ -9,6 +9,7 @@ var pairScores = [];
 
 /************************** Global Funcions **********************/
 function pluckByID(inArr, ID) {
+  console.log('pluckByID', arguments);
   for (var i = 0; i < inArr.length; i++ ) {
     if (inArr[i].employeeID === ID) {
       return true;
@@ -18,6 +19,7 @@ function pluckByID(inArr, ID) {
 };
 
 function callTeam(ID1, ID2, score, total, officeID) {
+  console.log('callTeam', arguments);
   queries.getAllTeammatesForOneEmployee(dbconnect, ID1, function(err, data1) {
     queries.getAllTeammatesForOneEmployee(dbconnect, ID2, function(err, data2) {
       if(pluckByID(data1, ID2) || pluckByID(data2, ID1)) {
@@ -31,6 +33,7 @@ function callTeam(ID1, ID2, score, total, officeID) {
 };
 
 function callBlackList(ID1, ID2, score, total, officeID) {
+  console.log('callBlackList', arguments);
   queries.getAllBlacklistEmployeesForOneEmployee(dbconnect, ID1, function(err, data1) {
     queries.getAllBlacklistEmployeesForOneEmployee(dbconnect, ID2, function(err, data2) {
       if(pluckByID(data1, ID2) || pluckByID(data2, ID1)) {
@@ -44,6 +47,7 @@ function callBlackList(ID1, ID2, score, total, officeID) {
 };
 
 function callWhiteList(ID1,ID2, score, total, officeID) {
+  console.log('callWhiteList', arguments);
   queries.getAllWhitelistEmployeesForOneEmployee(dbconnect, ID1, function(err, data1) {
     queries.getAllWhitelistEmployeesForOneEmployee(dbconnect, ID2, function(err, data2) {
       if(pluckByID(data1, ID2) || pluckByID(data2, ID1)) {
@@ -68,13 +72,17 @@ function callWhiteList(ID1,ID2, score, total, officeID) {
     });
   }
   exports.Start= function(callback) {
+    console.log('Start', arguments);
     queries.getAllOffices(dbconnect, function(err, data) {
+      console.log('queries.getAllOffices', arguments);
       var offices=data;
       if (!offices || offices.length === 0) {
         return callback('No offices to search');
       }
       offices.forEach(function(office, key) {
+        console.log('offices.forEach', arguments);
         queries.getAllEmployeesForOneOfficeConfidential(dbconnect, office.officeID, function(err, data) {
+          console.log('queries.getAllEmployeesForOneOfficeConfidential', arguments);
           if (err) {
             return console.error(err); // continue to next office iteration
           }
@@ -92,10 +100,12 @@ function callWhiteList(ID1,ID2, score, total, officeID) {
               good=true;
             }
           }
-          if(good) {
+          // if(good) {
             //var total=(emps.length * (emps.length -1))/2;
             emps.forEach(function(emp1, key) {
+              console.log('emps1.forEach', arguments);
               emps.forEach(function(emp2, key) {
+                console.log('emps2.forEach', arguments);
                 if(emp1.employeeID===emp2.employeeID) {
                 } else{
                   var score = 0;
@@ -122,7 +132,8 @@ function callWhiteList(ID1,ID2, score, total, officeID) {
                 }
               });
             });
-          }
+          // }
+          // console.log('not good');
         });
       });
     });

@@ -13,10 +13,10 @@ function randomString(length, chars) {
 
 const env = {
   database: {
-    host: 'isc.c2uhc91lzpk3.us-east-1.rds.amazonaws.com',
+    host: '127.0.0.1',
     name: 'seating_lucid_agency',
-    user: 'iscroot',
-    pass: '??Pr}AX&8dGq8>27',
+    user: 'root',
+    pass: '',
     port: 3306,
     multipleStatements: true
   },

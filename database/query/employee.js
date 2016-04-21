@@ -559,3 +559,31 @@ exports.updateEmployeeProfileImage = function(connection, data) {
     }
   });
 };
+
+exports.getAllEmployeeRelations = function(connection, callback) {
+  connection.query('SELECT * FROM seating_lucid_agency.employee_blacklist;', function(err, blacklist) {
+    if (err) {
+      console.log(err);
+      callback(err, null);
+    } else {
+      connection.query('SELECT * FROM seating_lucid_agency.employee_whitelist;', function(err, whitelist) {
+        if (err) {
+          console.log(err);
+          callback(err, null);
+        } else {
+          connection.query('SELECT * FROM seating_lucid_agency.employee_teammates;', function(err, teammates) {
+            if (err) {
+              console.log(err);
+            } else {
+              callback(null, {
+                blacklist,
+                whitelist,
+                teammates
+              });
+            }
+          });
+        }
+      });
+    }
+  });
+};
