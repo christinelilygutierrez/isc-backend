@@ -478,7 +478,7 @@ router.post('/PasswordResetEmailCheck', function(req, res) {
   queries.getUser(dbconnect, user, function(err, data) {
     console.log(data);
     if (data.length>0) {
-      res.json({ success: true, message: 'User found.', data });
+      res.json({ success: true, message: 'User found.', data: data});
     }
     else {
       res.json({ success: false, message: 'No such user.' });
@@ -3046,14 +3046,16 @@ router.delete('/SeatingCharts/:id', function(req, res, next) {
 // Populate Seating Chart
 //
 router.get('/SeatingCharts/:id/Populate', function(req, res, next) {
-  const id = req.params.id;
+  const seatingChartId = req.params.id;
   const wkdir = path.resolve(__dirname, '../seating_chart_algorithm');
+  const chartFile = wkdir + '/tmp/chart.json';
+  const employeeFile = wkdir + '/tmp/employees.json';
   if (!isInt(req.params.id)) {
     return res.json(apiError.errors('400', 'Incorrect parameters'));
   }
 
   // get seating chart
-  queries.getSeatingChart(dbconnect, id, function(err, data) {
+  queries.getSeatingChart(dbconnect, seatingChartId, function(err, data) {
     if (err) {
       console.log({err});
       return res.json(apiError.queryError('500', err.toString(), data));
@@ -3062,14 +3064,14 @@ router.get('/SeatingCharts/:id/Populate', function(req, res, next) {
     const seatingChart = data[0];
 
     // write chart to file
-    jsonfile.writeFile(wkdir + '/tmp/chart.json', seatingChart.base_floor_plan, function(err) {
+    jsonfile.writeFile(chartFile, seatingChart.base_floor_plan, function(err) {
       if (err) {
         console.log({err});
         return res.json(apiError.queryError('500', err.toString()));
       }
 
       // get office employees
-      queries.getAllEmployeesForOneOffice(dbconnect, req.params.id, function(err, data) {
+      queries.getAllEmployeesForOneOffice(dbconnect, seatingChart.office_id, function(err, data) {
         if (err) {
           console.log({err});
           return res.json(apiError.queryError('500', err.toString(), data));
@@ -3078,14 +3080,50 @@ router.get('/SeatingCharts/:id/Populate', function(req, res, next) {
         const officeEmployees = data;
 
         // write employees to file
-        jsonfile.writeFile(wkdir + '/tmp/employees.json', officeEmployees, function(err) {
+        jsonfile.writeFile(employeeFile, officeEmployees, function(err) {
           if (err) {
             console.log({err});
             return res.json(apiError.queryError('500', err.toString()));
           }
 
-          // execute similarity algorithm, write to file
-          const similarityAlgorithm = require('../seating_chart_algorithm/similarity_algorithm');
+          // Read result of algorithm and return it to the program
+          const similarityFile = wkdir + '/similarity_files/' + seatingChart.office_id + '_similarity.json';
+          jsonfile.readFile(similarityFile, function(err) {
+            if (err) {
+              console.log({err});
+              const similarity_algo = require('../seating_chart_algorithm/similarity_algorithm');
+              similarity_algo.Start();
+              return res.json(apiError.queryError('501', 'Populating similarity algorithms. Please restart command in one minute.'));
+            } else {
+              const address = path.join(__dirname + "./../seating_chart_algorithm");
+              const output = address + "/output/" + data.output;
+
+              var cmd = 'java -jar ' + address + '/Algorithm.jar ' + chartFile + ' ' + employeeFile + ' ' + similarityFile + ' ' + output;
+
+              // execute the seating_chart_algorithm
+              exec(cmd, function(error, stdout, stderr) {
+                if (error || stderr) {
+                  console.log({error, stdout, stderr});
+                  return res.json(apiError.queryError('500', error ? err.toString() : stderr ? stderr.toString() : 'Error executing command to populate seating chart' ));
+                }
+                jsonfile.readFile(output, function(err, file) {
+                  if (err) {
+                    console.log({err});
+                    return res.json(apiError.queryError('500', err.toString()));
+                  } else {
+                    queries.updateSeatingChart(dbconnect, seatingChartId, {seating_chart: JSON.stringify(file)}, function(err){
+                      if (err) {
+                        console.log({err});
+                        return res.json(apiError.queryError('500', err.toString()));
+                      } else {
+                        return res.json(JSON.stringify(file));
+                      }
+                    });
+                  }
+                });
+              });
+            }
+          });
           // similarityAlgorithm.Start(function(err) {
           //   //
           // });
