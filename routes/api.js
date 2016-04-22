@@ -2835,6 +2835,22 @@ router.get('/FloorPlans/:id', function(req, res, next) {
 });
 
 //
+// Read Floor Plans for an office
+//
+router.get('/FloorPlansOfOffice/:officeID', function(req, res, next) {
+  var officeID = req.params.officeID;
+  queries.getFloorPlansOfOffice(dbconnect, officeID, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Floor Plans of office:' , result);
+    }
+    return res.json(result);
+  });
+});
+
+//
 // Update Floor Plan
 //
 router.put('/FloorPlans/:id', function(req, res, next) {
@@ -3048,6 +3064,22 @@ router.get('/SeatingCharts/:id', function(req, res, next) {
       console.log('Seating Charts:' , seatingCharts);
     }
     return res.json(seatingCharts);
+  });
+});
+
+//
+// Read Seating Charts for an office
+//
+router.get('/SeatingChartsOfOffice/:officeID', function(req, res, next) {
+  var officeID = req.params.officeID;
+  queries.getSeatingChartsOfOffice(dbconnect, officeID, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Seating charts of office:' , result);
+    }
+    return res.json(result);
   });
 });
 

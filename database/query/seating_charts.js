@@ -54,6 +54,19 @@ exports.getSeatingChart = function(connection, id, callback) {
 };
 
 /**
+ * Get an seating charts for an office
+ *
+ * @param {object} connection - The database connection object
+ * @param {number} id - The id of the item to retrieve
+ * @param {function} callback - The callback handler
+ */
+exports.getSeatingChartsOfOffice = function(connection, id, callback) {
+  connection.query('SELECT S.id, S.name, S.base_floor_plan, S.base_floor_plan_rows, S.base_floor_plan_cols, S.base_floor_plan_name, S.seating_chart, S.office_id, S.created_at, S.updated_at FROM seating_lucid_agency.seating_charts AS S, seating_lucid_agency.office AS O WHERE S.office_id = O.officeID AND O.officeID = ?;', id, function(err, result) {
+    return err ? callback(err) : callback(null, result);
+  });
+};
+
+/**
  * Update an item in the collection
  *
  * @param {object} connection - The database connection object
