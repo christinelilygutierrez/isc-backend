@@ -581,14 +581,6 @@ router.get('/DeletePasswordReset/:id', function(req, res) {
   res.json(apiSuccess.successQuery(true, "Temporary reset password deleted in seating_lucid_agency"));
 });
 
-router.get('/SimilarityAlgorithm/Execute', function(req, res, next) {
-  const calculateEmployeeSimilarities = require('../seating_chart_algorithm/calculate_employee_similarities');
-  const officeId = 1;
-  calculateEmployeeSimilarities.run(officeId, function(err, data) {
-    return res.json({err, data});
-  });
-});
-
 /**************** MUST HAVE CREDENTIALS FOR THE FOLLOWING HTTP METHODS ****************/
 router.use(function(req, res, next) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
@@ -671,7 +663,7 @@ router.post('/Upload/CSV', upload.single('file'), function (req, res, next) {
       //console.log(file.filename);
       res.status(204).end();
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -698,7 +690,7 @@ router.post('/Algorithm/Execute', function(req, res, next) {
       });
       res.json(apiError.successError(true, 'algorithm executed'));
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -737,7 +729,7 @@ router.post('/AddCompany',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -761,7 +753,7 @@ router.post('/AddCluster',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -787,7 +779,7 @@ router.post('/AddDesk',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -863,7 +855,7 @@ router.post('/AddEmployee',function(req, res, next) {
         });
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -896,7 +888,7 @@ router.post('/AddEmployees',function(req, res, next) {
       }
       return res.json(apiSuccess.successQuery(true, "Employees added to seating_lucid_agency from CSV"));
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -918,7 +910,7 @@ router.post('/AddAdminToCompany',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -942,7 +934,7 @@ router.post('/AddEmployeeToOffice',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -994,7 +986,7 @@ router.post('/AddInitialOfficeWithEmployee',function(req, res, next) {
         });
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1044,7 +1036,7 @@ router.post('/AddOffice',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1095,7 +1087,7 @@ router.post('/AddOfficeEmployee',function(req, res, next) {
         });
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1123,7 +1115,7 @@ router.post('/AddTeammatesToEmployee',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1147,7 +1139,7 @@ router.post('/AddTemperatureRange',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1171,7 +1163,7 @@ router.post('/AddTemperatureRangeToEmployee',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1250,7 +1242,7 @@ router.get('/DeleteCompany/:id', function(req, res) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1267,7 +1259,7 @@ router.get('/DeleteEmployee/:id', function(req, res) {
       queries.deleteEmployee(dbconnect, ID);
       return res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1284,7 +1276,7 @@ router.get('/DeleteOfficeEmployee/:id', function(req, res) {
       queries.deleteEmployee(dbconnect, ID);
       return res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1301,7 +1293,7 @@ router.get('/DeleteEmployeeFromOffice/:id', function(req, res) {
       queries.deleteEmployeeFromOffice(dbconnect, ID);
       return res.json(apiSuccess.successQuery(true, "Employee deleted in seating_lucid_agency"));
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1342,7 +1334,7 @@ router.get('/DeleteOffice/:id', function(req, res) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1370,7 +1362,7 @@ router.get('/DeleteAdminFromCompany/:adminID/:companyID', function(req, res) {
       queries.deleteAdminToCompany(dbconnect, admin_ID, company_ID);
       return res.json(apiSuccess.successQuery(true, "Admin " + admin_ID + " deleted from company " + company_ID));
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1386,7 +1378,7 @@ router.get('/DeleteAdminFromCompany/:adminID/:companyID', function(req, res) {
 //       queries.deleteEntireBlackListForEmploye(dbconnect, ID);
 //       return res.json(apiSuccess.successQuery(true, "Blacklist deleted in seating_lucid_agency for employee " + ID));
 //     } else {
-//       return res.json(check);
+//       return res.status(403).send(check);
 //     }
 //   });
 // });
@@ -1402,7 +1394,7 @@ router.get('/DeleteAdminFromCompany/:adminID/:companyID', function(req, res) {
 //       queries.deleteEntireWhiteListForEmploye(dbconnect, ID);
 //       return res.json(apiSuccess.successQuery(true, "Whitelist deleted in seating_lucid_agency for employee " + ID));
 //     } else {
-//       return res.json(check);
+//       return res.status(403).send(check);
 //     }
 //   });
 // });
@@ -1419,7 +1411,7 @@ router.get('/DeleteTemperatureRange/:id', function(req, res) {
       queries.deleteRange(dbconnect, ID);
       return res.json(apiSuccess.successQuery(true, "Temperature Range deleted in seating_lucid_agency"));
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1447,7 +1439,7 @@ router.post('/EditCompany/:id', function(req, res) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1481,7 +1473,7 @@ router.post('/UpdateCoworkers/:id', function(req, res) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1518,7 +1510,7 @@ router.post('/EditEmployee/:id', function(req, res) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1569,7 +1561,7 @@ router.post('/EditAdminToCompany/:id', function(req, res) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1617,7 +1609,7 @@ router.post('/EditEmployeeWorksAtOffice/:id', function(req, res) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1650,7 +1642,7 @@ router.post('/EditOffice/:id',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1739,7 +1731,7 @@ router.post('/EditEmployeePreferences/:id', function(req, res) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1768,7 +1760,7 @@ router.post('/EditEmployeeTeammates/:id', function(req, res) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -1796,7 +1788,7 @@ router.post('/EditTemperatureRange/:id',function(req, res, next) {
         }
       });
     } else {
-      return res.json(check);
+      return res.status(403).send(check);
     }
   });
 });
@@ -2792,15 +2784,22 @@ router.get('/FloorPlanOfOffice/:id',function(req, res, next) {
 // Create Floor Plan
 //
 router.post('/FloorPlans',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  queries.addFloorPlan(dbconnect, data, function(err, result) {
-    if (err) {
-      return res.json(apiError.queryError('500', err.toString(), result));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      queries.addFloorPlan(dbconnect, data, function(err, result) {
+        if (err) {
+          return res.json(apiError.queryError('500', err.toString(), result));
+        }
+        if (env.logQueries) {
+          console.log('Floor plan created', result);
+        }
+        return res.json(result);
+      });
+    } else {
+      return res.status(403).send(check);
     }
-    if (env.logQueries) {
-      console.log('Floor plan created', result);
-    }
-    return res.json(result);
   });
 });
 
@@ -2839,16 +2838,26 @@ router.get('/FloorPlans/:id', function(req, res, next) {
 // Update Floor Plan
 //
 router.put('/FloorPlans/:id', function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var id = req.params.id;
-  queries.updateFloorPlan(dbconnect, id, data, function(err, result) {
-    if (err) {
-      return res.json(apiError.queryError('500', err.toString(), result));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var id = req.params.id;
+      delete data.created_at;
+      data.updated_at = new Date;
+      queries.updateFloorPlan(dbconnect, id, data, function(err, result) {
+        if (err) {
+          console.log(err);
+          return res.json(apiError.queryError('500', err.toString(), result));
+        }
+        if (env.logQueries) {
+          console.log('Floor plan updated', result);
+        }
+        return res.json(result);
+      });
+    } else {
+      return res.status(403).send(check);
     }
-    if (env.logQueries) {
-      console.log('Floor plan updated', result);
-    }
-    return res.json(result);
   });
 });
 
@@ -2856,17 +2865,24 @@ router.put('/FloorPlans/:id', function(req, res, next) {
 // Delete Floor Plan
 //
 router.delete('/FloorPlans/:id', function(req, res, next) {
-  if (!isInt(req.params.id)) {
-    return res.json(apiError.errors('400', 'Incorrect parameters'));
-  }
-  queries.removeFloorPlan(dbconnect, req.params.id, function(err, result) {
-    if (err) {
-      return res.json(apiError.queryError('500', err.toString(), result));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      if (!isInt(req.params.id)) {
+        return res.json(apiError.errors('400', 'Incorrect parameters'));
+      }
+      queries.removeFloorPlan(dbconnect, req.params.id, function(err, result) {
+        if (err) {
+          return res.json(apiError.queryError('500', err.toString(), result));
+        }
+        if (env.logQueries) {
+          console.log('Floor plan #' + req.params.id + ' removed from database.');
+        }
+        return res.json(result);
+      });
+    } else {
+      return res.status(403).send(check);
     }
-    if (env.logQueries) {
-      console.log('Floor plan #' + req.params.id + ' removed from database.');
-    }
-    return res.json(result);
   });
 });
 
@@ -2970,18 +2986,37 @@ router.get('/PasswordResetForEmployee/:id',function(req, res, next) {
 });
 
 //
+// Execute the similarityAlgorithm for an office
+//
+router.get('/SimilarityAlgorithm/Execute/:officeID', function(req, res, next) {
+  const calculateEmployeeSimilarities = require('../seating_chart_algorithm/calculate_employee_similarities');
+  const officeId = req.params.officeID;
+  calculateEmployeeSimilarities.run(officeId, function(err, data) {
+    return res.json({err, data});
+  });
+});
+
+//
 // Create Seating Chart
 //
 router.post('/SeatingCharts',function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  queries.addSeatingChart(dbconnect, data, function(err, result) {
-    if (err) {
-      return res.json(apiError.queryError('500', err.toString(), result));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      queries.addSeatingChart(dbconnect, data, function(err, result) {
+        if (err) {
+          console.log(err);
+          return res.json(apiError.queryError('500', err.toString(), result));
+        }
+        if (env.logQueries) {
+          console.log('Seating chart created', result);
+        }
+        return res.json(result);
+      });
+    } else {
+      return res.status(403).send(check);
     }
-    if (env.logQueries) {
-      console.log('Seating chart created', result);
-    }
-    return res.json(result);
   });
 });
 
@@ -3020,16 +3055,23 @@ router.get('/SeatingCharts/:id', function(req, res, next) {
 // Update Seating Chart
 //
 router.put('/SeatingCharts/:id', function(req, res, next) {
-  var data = JSON.parse(JSON.stringify(req.body));
-  var id = req.params.id;
-  queries.updateSeatingChart(dbconnect, id, data, function(err, result) {
-    if (err) {
-      return res.json(apiError.queryError('500', err.toString(), result));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success)  {
+      var data = JSON.parse(JSON.stringify(req.body));
+      var id = req.params.id;
+      queries.updateSeatingChart(dbconnect, id, data, function(err, result) {
+        if (err) {
+          return res.json(apiError.queryError('500', err.toString(), result));
+        }
+        if (env.logQueries) {
+          console.log('Seating chart updated', result);
+        }
+        return res.json(result);
+      });
+    } else {
+      return res.status(403).send(check);
     }
-    if (env.logQueries) {
-      console.log('Seating chart updated', result);
-    }
-    return res.json(result);
   });
 });
 
@@ -3037,17 +3079,24 @@ router.put('/SeatingCharts/:id', function(req, res, next) {
 // Delete Seating Chart
 //
 router.delete('/SeatingCharts/:id', function(req, res, next) {
-  if (!isInt(req.params.id)) {
-    return res.json(apiError.errors('400', 'Incorrect parameters'));
-  }
-  queries.removeSeatingChart(dbconnect, req.params.id, function(err, result) {
-    if (err) {
-      return res.json(apiError.queryError('500', err.toString(), result));
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success)  {
+      if (!isInt(req.params.id)) {
+        return res.json(apiError.errors('400', 'Incorrect parameters'));
+      }
+      queries.removeSeatingChart(dbconnect, req.params.id, function(err, result) {
+        if (err) {
+          return res.json(apiError.queryError('500', err.toString(), result));
+        }
+        if (env.logQueries) {
+          console.log('Seating chart #' + req.params.id + ' removed from database.');
+        }
+        return res.json(result);
+      });
+    } else {
+      return res.status(403).send(check);
     }
-    if (env.logQueries) {
-      console.log('Seating chart #' + req.params.id + ' removed from database.');
-    }
-    return res.json(result);
   });
 });
 
