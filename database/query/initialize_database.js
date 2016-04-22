@@ -157,6 +157,8 @@ CREATE TABLE seating_charts (\
   id int(10) unsigned NOT NULL AUTO_INCREMENT,\
   name varchar(55) NOT NULL DEFAULT 'New Seating Chart',\
   base_floor_plan text,\
+  base_floor_plan_rows int(10) unsigned NOT NULL,\
+  base_floor_plan_cols int(10) unsigned NOT NULL,\
   base_floor_plan_name varchar(55) DEFAULT NULL,\
   seating_chart text,\
   office_id int(10) DEFAULT NULL,\

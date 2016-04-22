@@ -8,6 +8,7 @@ var _ = require('lodash');
 /**
  * Calculate employee similarities
  *
+ * @param {number} officeId - The office id for the seating chart
  * @param {function} callback - The callback function
  */
 exports.run = function calculateEmployeeSimilarities(officeId, callback) {
@@ -45,7 +46,7 @@ exports.run = function calculateEmployeeSimilarities(officeId, callback) {
         // 4. Calculate employee similarities
         //
         var similarities = [];
-        for (var i = 0; i < employees.length - 2; i++) {
+        for (var i = 0; i < employees.length - 1; i++) {
           // get relations for employee "i"
           var employeeTeammates = _.filter(allEmployeeRelations.teammates, {
             idemployee_teammates: employees[i].employeeID

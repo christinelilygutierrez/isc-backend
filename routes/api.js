@@ -19,6 +19,7 @@ var uuid = require('node-uuid');
 var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 var pub = fs.readFileSync(path.join(__dirname+"./../sslcert/localhost.pem"));
 var priv = fs.readFileSync(path.join(__dirname+"./../sslcert/localhost.key"));
+var _ = require('lodash');
 
 /**************** Utility Functions ****************/
 function isInt(value) {
@@ -3011,27 +3012,6 @@ router.get('/SeatingCharts/:id', function(req, res, next) {
     if (env.logQueries) {
       console.log('Seating Charts:' , seatingCharts);
     }
-    //
-    // TODO: get all office employees
-    //
-    const seatingChart = seatingCharts[0];
-    if (seatingChart.seating_chart) {
-      // add employee names to seating chart
-      var seatingChartJson = JSON.parse(seatingChart.seating_chart);
-      seatingChartJson = seatingChartJson.forEach(row => {
-        row = row.map(spot => {
-          if (spot.userId) {
-            // var employee = _.find(employees, {employeeID: spot.userId});
-            // if (employee) {
-            //   spot.userName = employee.firstName + ' ' + employee.lastName;
-            // }
-            spot.userName = 'John Doe';
-          }
-          return spot;
-        });
-      });
-      seatingChart.seating_chart = JSON.stringify(seatingChartJson);
-    }
     return res.json(seatingCharts);
   });
 });
@@ -3118,23 +3098,25 @@ router.get('/SeatingCharts/:id/Populate', function(req, res, next) {
 
         exec(cmd, function(error, stdout, stderr) {
           if (error || stderr) {
-            console.log({error, stdout, stderr});
+            console.log('exec(cmd) err', {error, stdout, stderr});
             return res.json(apiError.queryError('500', error ? error.toString() : stderr ? stderr.toString() : 'Error executing command to populate seating chart' ));
           }
+          console.log('exec(cmd) success', {stdout});
 
-          jsonfile.readFile(outputFilePath, function(err, file) {
+          jsonfile.readFile(outputFilePath, function(err, seatingChartJson) {
             if (err) {
-              console.log({err});
+              console.log('jsonfile.readFile(outputFilePath) err', {err});
               return res.json(apiError.queryError('500', err.toString()));
             }
+            console.log('jsonfile.readFile(outputFilePath) success');
 
-            queries.updateSeatingChart(dbconnect, seatingChartId, {seating_chart: JSON.stringify(file)}, function(err) {
+            queries.updateSeatingChart(dbconnect, seatingChartId, {seating_chart: JSON.stringify(seatingChartJson)}, function(err) {
               if (err) {
-                console.log({err});
+                console.log('queries.updateSeatingChart() err', {err});
                 return res.json(apiError.queryError('500', err.toString()));
-              } else {
-                return res.json(JSON.stringify(file));
               }
+              console.log('queries.updateSeatingChart() success');
+              return res.json(seatingChartJson);
             });
           });
         });

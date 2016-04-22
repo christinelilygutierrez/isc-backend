@@ -1,0 +1,4 @@
+{
+  "ignore": ["seating_chart_algorithm/tmp/"],
+  "watch": ["database/", "email/", "public/", "routes/", "seating_chart_algorithm/", "views/"]
+}
