@@ -1178,68 +1178,17 @@ router.get('/DeleteCompany/:id', function(req, res) {
       if (!isInt(ID)) {
         return res.json(apiError.errors("400","Incorrect parameters"));
       }
-      queries.getAllOfficesForOneCompany(dbconnect, ID, function(err, data) {
-        if (err) {
-          return res.json(apiError.queryError("500", err.toString(), data));
-        } else if (env.logQueries) {
-          //console.log("Deleting Company: ", ID);
-          for (var item in data) {
-            queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
-              if (err) {
-                return res.json(apiError.queryError("500", err.toString(), data));
-              } else if (env.logQueries) {
-                //console.log("Delete office: ", data[item].officeID);
-                for (var i in result) {
-                  if (result[i].permissionLevel != 'superadmin') {
-                    queries.deleteEmployee(dbconnect, result[i].employeeID);
-                  } else if (result[i].permissionLevel == 'superadmin') {
-                    queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
-                  }
-                }
-                queries.deleteOffice(dbconnect, ID);
-              } else {
-                for (var i in result) {
-                  if (result[i].permissionLevel != 'superadmin') {
-                    queries.deleteEmployee(dbconnect, result[i].employeeID);
-                  } else if (result[i].permissionLevel == 'superadmin') {
-                    queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
-                  }
-                }
-                queries.deleteOffice(dbconnect, ID);
-              }
-            });
-          }
-          queries.deleteCompany(dbconnect, ID);
-          return res.json(apiSuccess.successQuery(true, "Company deleted in seating_lucid_agency"));
-        } else {
-          for (var item in data) {
-            queries.getAllEmployeesForOneOfficeConfidential(dbconnect, data[item].officeID, function(err, result) {
-              if (err) {
-                res.json(apiError.queryError("500", err.toString(), data));
-              } else if (env.logQueries) {
-                for (var i in result) {
-                  if (result[i].permissionLevel != 'superadmin') {
-                    queries.deleteEmployee(dbconnect, result[i].employeeID);
-                  } else if (result[i].permissionLevel == 'superadmin') {
-                    queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
-                  }
-                }
-                queries.deleteOffice(dbconnect, ID);
-              } else {
-                for (var i in result) {
-                  if (result[i].permissionLevel != 'superadmin') {
-                    queries.deleteEmployee(dbconnect, result[i].employeeID);
-                  } else if (result[i].permissionLevel == 'superadmin') {
-                    queries.deleteEmployeeFromOffice(dbconnect, result[i].employeeID);
-                  }
-                }
-                queries.deleteOffice(dbconnect, ID);
-              }
-            });
-          }
-          queries.deleteCompany(dbconnect, ID);
-          return res.json(apiSuccess.successQuery(true, "Company deleted in seating_lucid_agency"));
+      queries.getAllEmployeesForOneCompany(dbconnect, ID, function(err, results) {
+        for (var i in results) {
+          queries.deleteEmployee(dbconnect, results[i].employeeID);
         }
+        queries.getAllOfficesForOneCompany(dbconnect, ID, function(err, data) {
+          for (var i in data) {
+            queries.deleteOffice(dbconnect, data[i].officeID);
+          }
+          queries.deleteCompany(dbconnect, ID);
+          return res.json(apiSuccess.successQuery(true, "Company deleted in seating_lucid_agency"));
+        });
       });
     } else {
       return res.status(403).send(check);
@@ -2837,6 +2786,22 @@ router.get('/FloorPlans/:id', function(req, res, next) {
 //
 // Read Floor Plans for an office
 //
+router.get('/FloorPlansForCompany/:companyID', function(req, res, next) {
+  var companyID = req.params.companyID;
+  queries.getFloorPlansForCompany(dbconnect, companyID, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Floor Plans of company: ' , result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Read Floor Plans for an office
+//
 router.get('/FloorPlansOfOffice/:officeID', function(req, res, next) {
   var officeID = req.params.officeID;
   queries.getFloorPlansOfOffice(dbconnect, officeID, function(err, result) {
@@ -2901,6 +2866,123 @@ router.delete('/FloorPlans/:id', function(req, res, next) {
     }
   });
 });
+
+//
+// Read active seating chart for office
+//
+router.delete('/IsActive/:officeID', function(req, res, next) {
+  if (!isInt(req.params.officeID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.deleteActiveSeatingChartFromOffice(dbconnect, req.params.officeID, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('active seating chart from office:' , result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Read is_active
+//
+router.get('/IsActive', function(req, res, next) {
+  queries.getIsActive(dbconnect, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('office IDs and seating chart IDs:' , result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Read active seating chart for office
+//
+router.get('/ActiveSeatingChartOfOffice/:officeID', function(req, res, next) {
+  if (!isInt(req.params.officeID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.getActiveSeatingChartOfOffice(dbconnect, req.params.officeID, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('seating chart ID for office:' , result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Read active seating chart for office
+//
+router.get('/OfficeOfActiveSeatingChart/:seatingChartID', function(req, res, next) {
+  if (!isInt(req.params.seatingChartID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.getOfficeOfActiveSeatingChart(dbconnect, req.params.seatingChartID, function(err, result) {
+    if (err) {
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('officeID of active seating chart: ' , result);
+    }
+    return res.json(result);
+  });
+});
+
+//
+// Add active seating chart for office
+//
+router.post('/IsActive', function(req, res, next) {
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      queries.addActiveSeatingChartToOffice(dbconnect, data, function(err, result) {
+        if (err) {
+          return res.json(apiError.queryError('500', err.toString(), result));
+        } else if (env.logQueries) {
+          console.log('Active Seating Chart assigned to Office', result);
+        }
+        return res.json(result);
+      });
+    } else {
+      return res.status(403).send(check);
+    }
+  });
+});
+
+//
+// Update active seating chart for office
+//
+router.put('/IsActive/:officeID', function(req, res, next) {
+  if (!isInt(req.params.officeID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+  adminPermissionCheck(token, function(check) {
+    if (check.success) {
+      var data = JSON.parse(JSON.stringify(req.body));
+      queries.editActiveSeatingChartToOffice(dbconnect, data, req.params.officeID, function(err, result) {
+        if (err) {
+          return res.json(apiError.queryError('500', err.toString(), result));
+        } else if (env.logQueries) {
+          console.log('Active Seating Chart reassigned to Office', result);
+        }
+        return res.json(result);
+      });
+    } else {
+      return res.status(403).send(check);
+    }
+  });
+});
+
 
 router.get('/IsEmployeeAdmin/:id',function(req, res, next) {
   if (!isInt(req.params.id)) {
@@ -2984,7 +3066,6 @@ router.get('/OfficeOfEmployee/:id',function(req, res, next) {
 });
 
 router.get('/PasswordResetForEmployee/:id',function(req, res, next) {
-  console.log(req.params.id);
   if (!isInt(req.params.id)) {
     return res.json(apiError.errors("400","Incorrect parameters"));
   }
@@ -3005,6 +3086,9 @@ router.get('/PasswordResetForEmployee/:id',function(req, res, next) {
 // Execute the similarityAlgorithm for an office
 //
 router.get('/SimilarityAlgorithm/Execute/:officeID', function(req, res, next) {
+  if (!isInt(req.params.officeID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   const calculateEmployeeSimilarities = require('../seating_chart_algorithm/calculate_employee_similarities');
   const officeId = req.params.officeID;
   calculateEmployeeSimilarities.run(officeId, function(err, data) {
@@ -3020,19 +3104,77 @@ router.post('/SeatingCharts',function(req, res, next) {
   adminPermissionCheck(token, function(check) {
     if (check.success) {
       var data = JSON.parse(JSON.stringify(req.body));
+      data.updated_at = new Date;
       queries.addSeatingChart(dbconnect, data, function(err, result) {
         if (err) {
           console.log(err);
           return res.json(apiError.queryError('500', err.toString(), result));
-        }
-        if (env.logQueries) {
+        } else if (env.logQueries) {
           console.log('Seating chart created', result);
         }
-        return res.json(result);
+        //console.log('Step 1');
+        queries.getLatestSeatingChart(dbconnect, function(err, result) {
+          if (err) {
+            return res.json(apiError.queryError('500', err.toString(), result));
+          } else {
+            //console.log('Step 2');
+            var seatingChartID = result[0].id;
+            queries.existsActiveSeatingChartForOffice(dbconnect, data.office_id, function(err, result) {
+              if (err) {
+                return res.json(apiError.queryError('500', err.toString(), result));
+              } else {
+                if (result[0].result == 1) {
+                  //console.log('Active seating chart changed');
+                  var adder = {id_office: data.office_id, id_seating_chart: seatingChartID};
+                  queries.editActiveSeatingChartToOffice(dbconnect, adder, data.office_id, function(err, result) {
+                    if (err) {
+                      //console.log('err: ', err);
+                      return res.json(apiError.queryError('500', err.toString(), result));
+                    } else {
+                      //console.log('Step 3');
+                      return res.json(result);
+                    }
+                  });
+                } else {
+                  //console.log('Active seating chart changed');
+                  var adder = {id_office: data.office_id, id_seating_chart: seatingChartID};
+                  queries.addActiveSeatingChartToOffice(dbconnect, adder, function(err, result) {
+                    if (err) {
+                      //console.log('err: ', err);
+                      return res.json(apiError.queryError('500', err.toString(), result));
+                    } else {
+                      //console.log('success', result);
+                      return res.json(result);
+                    }
+                  });
+                }
+              }
+            });
+          }
+        });
       });
     } else {
       return res.status(403).send(check);
     }
+  });
+});
+
+//
+// Read Seating Charts
+//
+router.get('/ExistsSeatingChartForOffice/:id', function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
+  queries.existsSeatingChartForOffice(dbconnect, req.params.id, function(err, result) {
+    if (err) {
+      console.log(err);
+      return res.json(apiError.queryError('500', err.toString(), result));
+    }
+    if (env.logQueries) {
+      console.log('Seating Charts:' , result);
+    }
+    return res.json(result);
   });
 });
 
@@ -3055,6 +3197,9 @@ router.get('/SeatingCharts', function(req, res, next) {
 // Read Seating Chart
 //
 router.get('/SeatingCharts/:id', function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   var id = req.params.id;
   queries.getSeatingChart(dbconnect, id, function(err, seatingCharts) {
     if (err) {
@@ -3071,6 +3216,9 @@ router.get('/SeatingCharts/:id', function(req, res, next) {
 // Read Seating Charts for an office
 //
 router.get('/SeatingChartsOfOffice/:officeID', function(req, res, next) {
+  if (!isInt(req.params.officeID)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   var officeID = req.params.officeID;
   queries.getSeatingChartsOfOffice(dbconnect, officeID, function(err, result) {
     if (err) {
@@ -3087,11 +3235,15 @@ router.get('/SeatingChartsOfOffice/:officeID', function(req, res, next) {
 // Update Seating Chart
 //
 router.put('/SeatingCharts/:id', function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors("400","Incorrect parameters"));
+  }
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
   adminPermissionCheck(token, function(check) {
     if (check.success)  {
       var data = JSON.parse(JSON.stringify(req.body));
       var id = req.params.id;
+      data.updated_at = (new Date);
       queries.updateSeatingChart(dbconnect, id, data, function(err, result) {
         if (err) {
           return res.json(apiError.queryError('500', err.toString(), result));
@@ -3190,8 +3342,8 @@ router.get('/SeatingCharts/:id/Populate', function(req, res, next) {
               return res.json(apiError.queryError('500', err.toString()));
             }
             console.log('jsonfile.readFile(outputFilePath) success');
-
-            queries.updateSeatingChart(dbconnect, seatingChartId, {seating_chart: JSON.stringify(seatingChartJson)}, function(err) {
+            var newChart = JSON.stringify(seatingChartJson);
+            queries.updateSeatingChart(dbconnect, seatingChartId, {seating_chart: newChart, updated_at: new Date}, function(err) {
               if (err) {
                 console.log('queries.updateSeatingChart() err', {err});
                 return res.json(apiError.queryError('500', err.toString()));

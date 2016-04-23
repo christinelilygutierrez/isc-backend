@@ -37,6 +37,27 @@ exports.deleteOffice = function(connection, id) {
       console.log("Office ID %d was deleted from owned_by", id);
     }
   });
+  connection.query("DELETE FROM seating_lucid_agency.is_active WHERE id_office = ?;", id, function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Office ID %d was deleted from is_active", id);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.floor_plans WHERE office_id = ?;", id, function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Office ID %d was deleted from floor_plans", id);
+    }
+  });
+  connection.query("DELETE FROM seating_lucid_agency.seating_charts WHERE office_id = ?;", id, function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Office ID %d was deleted from seating_charts", id);
+    }
+  });
   connection.query("DELETE FROM seating_lucid_agency.office WHERE officeID = ?;", id, function(err, result) {
     if (err && env.logErrors) {
       console.log(err);

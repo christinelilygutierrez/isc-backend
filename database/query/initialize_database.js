@@ -166,6 +166,14 @@ CREATE TABLE seating_charts (\
   updated_at timestamp NULL DEFAULT NULL,\
   PRIMARY KEY (id)\
 );\
+CREATE TABLE `is_active` (\
+  `id_office` int(10) unsigned NOT NULL,\
+  `id_seating_chart` int(10) unsigned NOT NULL,\
+  PRIMARY KEY (`id_office`),\
+  KEY `id_seating_chart_idx` (`id_seating_chart`),\
+  CONSTRAINT `id_office` FOREIGN KEY (`id_office`) REFERENCES `office` (`officeID`) ON DELETE NO ACTION ON UPDATE NO ACTION,\
+  CONSTRAINT `id_seating_chart` FOREIGN KEY (`id_seating_chart`) REFERENCES `seating_charts` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION\
+);\
 CREATE TABLE sits_at (\
   IDemployee int(10) unsigned NOT NULL,\
   IDdesk int(10) unsigned NOT NULL,\

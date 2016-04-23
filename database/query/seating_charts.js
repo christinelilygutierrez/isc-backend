@@ -32,10 +32,48 @@ exports.addSeatingChart = function(connection, newSeatingChart, callback) {
  * Get the collection
  *
  * @param {object} connection - The database connection object
+ * @param {number} id - ID of office
+ * @param {function} callback - The callback handler
+ */
+ exports.existsSeatingChartForOffice = function(connection, id, callback) {
+   connection.query('SELECT EXISTS (SELECT S.id FROM seating_lucid_agency.seating_charts AS S WHERE S.office_id = ?) AS result;', id, function(err, result) {
+     return err ? callback(err) : callback(null, result);
+   });
+ };
+
+ /**
+  * Get the collection
+  *
+  * @param {object} connection - The database connection object
+  * @param {number} id - ID of office
+  * @param {function} callback - The callback handler
+  */
+  exports.existsActiveSeatingChartForOffice = function(connection, id, callback) {
+    connection.query('SELECT EXISTS (SELECT S.id FROM seating_lucid_agency.seating_charts AS S, seating_lucid_agency.is_active AS A WHERE A.id_seating_chart = S.id AND S.office_id = ?) AS result;', id, function(err, result) {
+      return err ? callback(err) : callback(null, result);
+    });
+  };
+
+/**
+ * Get the collection
+ *
+ * @param {object} connection - The database connection object
  * @param {function} callback - The callback handler
  */
 exports.getSeatingCharts = function(connection, callback) {
   connection.query('SELECT * FROM ' + tableLoc, function(err, result) {
+    return err ? callback(err) : callback(null, result);
+  });
+};
+
+/**
+ * Get the collection
+ *
+ * @param {object} connection - The database connection object
+ * @param {function} callback - The callback handler
+ */
+exports.getLatestSeatingChart = function(connection, callback) {
+  connection.query('SELECT id FROM seating_lucid_agency.seating_charts WHERE id in (SELECT MAX(id) FROM seating_lucid_agency.seating_charts);', function(err, result) {
     return err ? callback(err) : callback(null, result);
   });
 };
@@ -87,6 +125,13 @@ exports.updateSeatingChart = function(connection, id, newSeatingChart, callback)
  * @param {number} id - The id of the item to delete
  */
 exports.removeSeatingChart = function(connection, id, callback) {
+  connection.query("DELETE FROM seating_lucid_agency.is_active WHERE id_seating_chart = ?;", id, function(err, result) {
+    if (err && env.logErrors) {
+      console.log(err);
+    } else if (env.logQueries) {
+      console.log("Seating Chart ID %d was deleted from is_active", id);
+    }
+  });
   connection.query('DELETE FROM ' + tableLoc + ' WHERE id = ?;', id, function(err, result) {
     return err ? callback(err) : callback(null, result);
   });

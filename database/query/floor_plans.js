@@ -57,6 +57,19 @@ exports.getFloorPlan = function(connection, id, callback) {
  * Get floorplans for a given office
  *
  * @param {object} connection - The database connection object
+ * @param {number} companyID - The id of the office
+ * @param {function} callback - The callback handler
+ */
+exports.getFloorPlansForCompany = function(connection, companyID, callback) {
+  connection.query('SELECT F.id, F.office_id, F.name, F.cols, F.rows, F.spots, F.created_at, F.updated_at FROM seating_lucid_agency.floor_plans AS F, seating_lucid_agency.office AS O, seating_lucid_agency.owned_by AS A, seating_lucid_agency.company AS C WHERE F.office_id = O.officeID AND O.officeID = A.IDforOffice AND A.IDforCompany = C.companyID AND C.companyID = ?;', companyID, function(err, result) {
+    return err ? callback(err) : callback(null, result);
+  });
+};
+
+/**
+ * Get floorplans for a given office
+ *
+ * @param {object} connection - The database connection object
  * @param {number} officeID - The id of the office
  * @param {function} callback - The callback handler
  */
