@@ -4,16 +4,19 @@
 //jshint esversion: 6
 
 // The environment variable for the database
+var bcrypt = require('bcrypt');
 
 function randomString(length, chars) {
     var result = '';
     for (var i = length; i > 0; --i) result += chars[Math.floor(Math.random() * chars.length)];
     return result;
 };
+var salt = bcrypt.genSaltSync(10);
+var hash = bcrypt.hashSync(randomString(100, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*(),<.>/?;:[{}]=+-_'), salt);
 
 const env = {
   database: {
-    host: '127.0.0.1',
+    host: 'localhost',
     name: 'seating_lucid_agency',
     user: 'root',
     pass: '',
@@ -22,7 +25,7 @@ const env = {
   },
   logErrors: true,
   logQueries: false,
-  key : randomString(100, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*(),<.>/?;:[{}]=+-_')
+  key : hash
 };
 
 module.exports = env;

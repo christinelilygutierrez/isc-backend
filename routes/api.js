@@ -143,7 +143,7 @@ function adminPermissionCheck(token, callback) {
   }
 };
 
-function adminDeleteOfficePermissionCheck(token, officeID, callback) {
+function adminDeleteFloorPlanPermissionCheck(token, id, callback) {
   if (token) {
     //console.log('hi');
     jwt.verify(token, env.key, function(err, decoded) {
@@ -154,23 +154,23 @@ function adminDeleteOfficePermissionCheck(token, officeID, callback) {
         //console.log('decoded: ', decoded);
         queries.validatedToken(dbconnect, decoded.email, decoded.password, function(err, results) {
           if (err) {
-           callback(apiError.successError(false, 'adminDeleteOfficePermissionCheck failed'));
+           callback(apiError.successError(false, 'adminDeleteFloorPlanPermissionCheck failed because bad token'));
          } else {
            var employee = results[0];
            if (employee.permissionLevel == 'superadmin') {
-             callback(apiError.successError(true, 'admin delete access granted'));
+             callback(apiError.successError(true, 'admin delete floor plan permission check passed'));
            } else if (employee.permissionLevel == 'admin') {
-             queries.verifyOfficeForEmployee(dbconnect, employee.employeeID, officeID, function(err, results) {
+             queries.verifyFloorPLanForEmployee(dbconnect, employee.employeeID, id, function(err, results) {
                if (err) {
-                callback(apiError.successError(false, 'adminDeleteOfficePermissionCheck failed office query'));
+                callback(apiError.successError(false, 'adminDeleteFloorPlanPermissionCheck failed OfficeForEmployee query'));
               } else {
                 if (isEmpty(results)) {
                   callback(apiError.successError(false, 'Error: invalid parameters'));
                 } else {
                   if (results[0].result) {
-                    callback(apiError.successError(true, 'admin delete access granted'));
+                    callback(apiError.successError(true, 'admin office permission check passed'));
                   } else {
-                    callback(apiError.successError(false, 'Permission denied. Cannot delete office of another admin'));
+                    callback(apiError.successError(false, 'Permission denied. Cannot delete seating chart of another admin'));
                   }
                 }
               }
@@ -187,6 +187,93 @@ function adminDeleteOfficePermissionCheck(token, officeID, callback) {
   }
 };
 
+function adminDeleteSeatingChartPermissionCheck(token, id, callback) {
+  if (token) {
+    //console.log('hi');
+    jwt.verify(token, env.key, function(err, decoded) {
+      if (err) {
+        //console.log('there');
+        callback(apiError.successError(false, 'Token authentication failure'));
+      } else {
+        //console.log('decoded: ', decoded);
+        queries.validatedToken(dbconnect, decoded.email, decoded.password, function(err, results) {
+          if (err) {
+           callback(apiError.successError(false, 'adminDeleteSeatingChartPermissionCheck failed because bad token'));
+         } else {
+           var employee = results[0];
+           if (employee.permissionLevel == 'superadmin') {
+             callback(apiError.successError(true, 'admin seating chart permission delete access granted'));
+           } else if (employee.permissionLevel == 'admin') {
+             queries.verifySeatingChartForEmployee(dbconnect, employee.employeeID, id, function(err, results) {
+               if (err) {
+                callback(apiError.successError(false, 'adminDeleteSeatingChartPermissionCheck failed OfficeForEmployee query'));
+              } else {
+                if (isEmpty(results)) {
+                  callback(apiError.successError(false, 'Error: invalid parameters'));
+                } else {
+                  if (results[0].result) {
+                    callback(apiError.successError(true, 'admin seating chart permission delete access granted'));
+                  } else {
+                    callback(apiError.successError(false, 'Permission denied. Cannot alter seating chart permission of another admin'));
+                  }
+                }
+              }
+             });
+           } else {
+             callback(apiError.successError(false, 'Permission denied. Must be admin or superadmin'));
+           }
+         }
+        });
+      }
+    });
+  } else {
+    callback(apiError.successError(false, 'No token provided'));
+  }
+};
+
+function adminOfficePermissionCheck(token, officeID, callback) {
+  if (token) {
+    //console.log('hi');
+    jwt.verify(token, env.key, function(err, decoded) {
+      if (err) {
+        //console.log('there');
+        callback(apiError.successError(false, 'Token authentication failure'));
+      } else {
+        //console.log('decoded: ', decoded);
+        queries.validatedToken(dbconnect, decoded.email, decoded.password, function(err, results) {
+          if (err) {
+           callback(apiError.successError(false, 'adminOfficePermissionCheck failed because bad token'));
+         } else {
+           var employee = results[0];
+           if (employee.permissionLevel == 'superadmin') {
+             callback(apiError.successError(true, 'admin office permission check passed'));
+           } else if (employee.permissionLevel == 'admin') {
+             queries.verifyOfficeForEmployee(dbconnect, employee.employeeID, officeID, function(err, results) {
+               if (err) {
+                callback(apiError.successError(false, 'adminOfficePermissionCheck failed OfficeForEmployee query'));
+              } else {
+                if (isEmpty(results)) {
+                  callback(apiError.successError(false, 'Error: invalid parameters'));
+                } else {
+                  if (results[0].result) {
+                    callback(apiError.successError(true, 'admin office permission check passed'));
+                  } else {
+                    callback(apiError.successError(false, 'Permission denied. Cannot alter office level permission of another admin'));
+                  }
+                }
+              }
+             });
+           } else {
+             callback(apiError.successError(false, 'Permission denied. Must be admin or superadmin'));
+           }
+         }
+        });
+      }
+    });
+  } else {
+    callback(apiError.successError(false, 'No token provided'));
+  }
+};
 
 function adminDeletePermissionCheck(token, employeeID, callback) {
   if (token) {
@@ -1232,7 +1319,7 @@ router.get('/DeleteOfficeEmployee/:id', function(req, res) {
 
 router.get('/DeleteEmployeeFromOffice/:id', function(req, res) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  superadminPermissionCheck(token, req.params.id, function(check) {
+  superadminPermissionCheck(token, function(check) {
     if (check.success) {
       var ID = req.params.id;
 
@@ -1250,7 +1337,6 @@ router.get('/DeleteEmployeeFromOffice/:id', function(req, res) {
 router.get('/DeleteOffice/:id', function(req, res) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
   superadminPermissionCheck(token, function(check) {
-  //adminDeleteOfficePermissionCheck(token, req.params.id, function(check) {
     if (check.success) {
       var ID = req.params.id;
 
@@ -2734,9 +2820,9 @@ router.get('/FloorPlanOfOffice/:id',function(req, res, next) {
 //
 router.post('/FloorPlans',function(req, res, next) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  adminPermissionCheck(token, function(check) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  adminOfficePermissionCheck(token, data.office_id, function(check) {
     if (check.success) {
-      var data = JSON.parse(JSON.stringify(req.body));
       queries.addFloorPlan(dbconnect, data, function(err, result) {
         if (err) {
           return res.json(apiError.queryError('500', err.toString(), result));
@@ -2820,7 +2906,8 @@ router.get('/FloorPlansOfOffice/:officeID', function(req, res, next) {
 //
 router.put('/FloorPlans/:id', function(req, res, next) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  adminPermissionCheck(token, function(check) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  adminOfficePermissionCheck(token, data.office_id, function(check) {
     if (check.success) {
       var data = JSON.parse(JSON.stringify(req.body));
       var id = req.params.id;
@@ -2846,12 +2933,12 @@ router.put('/FloorPlans/:id', function(req, res, next) {
 // Delete Floor Plan
 //
 router.delete('/FloorPlans/:id', function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors('400', 'Incorrect parameters'));
+  }
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  adminPermissionCheck(token, function(check) {
+  adminDeleteFloorPlanPermissionCheck(token, req.params.id, function(check) {
     if (check.success) {
-      if (!isInt(req.params.id)) {
-        return res.json(apiError.errors('400', 'Incorrect parameters'));
-      }
       queries.removeFloorPlan(dbconnect, req.params.id, function(err, result) {
         if (err) {
           return res.json(apiError.queryError('500', err.toString(), result));
@@ -3101,9 +3188,9 @@ router.get('/SimilarityAlgorithm/Execute/:officeID', function(req, res, next) {
 //
 router.post('/SeatingCharts',function(req, res, next) {
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  adminPermissionCheck(token, function(check) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  adminOfficePermissionCheck(token, data.office_id, function(check) {
     if (check.success) {
-      var data = JSON.parse(JSON.stringify(req.body));
       data.updated_at = new Date;
       queries.addSeatingChart(dbconnect, data, function(err, result) {
         if (err) {
@@ -3239,9 +3326,9 @@ router.put('/SeatingCharts/:id', function(req, res, next) {
     return res.json(apiError.errors("400","Incorrect parameters"));
   }
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  adminPermissionCheck(token, function(check) {
+  var data = JSON.parse(JSON.stringify(req.body));
+  adminOfficePermissionCheck(token, data.office_id, function(check) {
     if (check.success)  {
-      var data = JSON.parse(JSON.stringify(req.body));
       var id = req.params.id;
       data.updated_at = (new Date);
       queries.updateSeatingChart(dbconnect, id, data, function(err, result) {
@@ -3263,12 +3350,12 @@ router.put('/SeatingCharts/:id', function(req, res, next) {
 // Delete Seating Chart
 //
 router.delete('/SeatingCharts/:id', function(req, res, next) {
+  if (!isInt(req.params.id)) {
+    return res.json(apiError.errors('400', 'Incorrect parameters'));
+  }
   var token = req.body.token || req.query.token || req.headers['x-access-token'];
-  adminPermissionCheck(token, function(check) {
+  adminDeleteSeatingChartPermissionCheck(token, req.params.id, function(check) {
     if (check.success)  {
-      if (!isInt(req.params.id)) {
-        return res.json(apiError.errors('400', 'Incorrect parameters'));
-      }
       queries.removeSeatingChart(dbconnect, req.params.id, function(err, result) {
         if (err) {
           return res.json(apiError.queryError('500', err.toString(), result));

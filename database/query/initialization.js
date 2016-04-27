@@ -156,8 +156,28 @@ exports.existsTemperatureRangeForEmployee = function(connection, employeeID, cal
   });
 };
 
+exports.verifyFloorPLanForEmployee = function(connection, employeeID, ID, callback) {
+  connection.query('SELECT EXISTS (SELECT F.id FROM seating_lucid_agency.office AS O, seating_lucid_agency.works_at AS W, seating_lucid_agency.employee AS E, seating_lucid_agency.floor_plans AS F WHERE F.office_id = O.officeID AND O.officeID = W.officeKey AND W.employeeKey = E.employeeID AND E.employeeID = ? AND F.id = ? LIMIT 1) AS result;', [employeeID, ID], function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, result);
+    }
+  });
+};
+
 exports.verifyOfficeForEmployee = function(connection, employeeID, officeID, callback) {
   connection.query('SELECT EXISTS (SELECT O.officeID FROM seating_lucid_agency.office AS O, seating_lucid_agency.works_at AS W, seating_lucid_agency.employee AS E WHERE O.officeID = W.officeKey AND W.employeeKey = E.employeeID AND E.employeeID = ? AND O.officeID = ? LIMIT 1) AS result;', [employeeID, officeID], function(err, result) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, result);
+    }
+  });
+};
+
+exports.verifySeatingChartForEmployee = function(connection, employeeID, ID, callback) {
+  connection.query('SELECT EXISTS (SELECT S.id FROM seating_lucid_agency.office AS O, seating_lucid_agency.works_at AS W, seating_lucid_agency.employee AS E, seating_lucid_agency.seating_charts AS S WHERE S.office_id = O.officeID AND O.officeID = W.officeKey AND W.employeeKey = E.employeeID AND E.employeeID = ? AND S.id = ? LIMIT 1) AS result;', [employeeID, ID], function(err, result) {
     if (err) {
       callback(err, null);
     } else {
