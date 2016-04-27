@@ -601,7 +601,7 @@ router.post('/AddPasswordReset',function(req, res, next) {
           client.sendEmail({
             "From": "info@lucidseat.com",
             "To": data[0].email,
-            "Subject": 'Someone has Updated their Password',
+            "Subject": 'Password Reset Requested',
             "TextBody": "Please use the following URL to reset your password: lucidseat.com/password-reset/"+adder.token
           });
         });
