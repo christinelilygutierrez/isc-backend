@@ -62,8 +62,15 @@ public class Alg{
 				numberOfOneDeskClusters++;
 			}
 		}
-				
-		Employee pairedEmployees[][] = new Employee[chart.getNumberOfClusters() - numberOfOneDeskClusters][2];
+
+		int desiredNumberOfPairs;
+		if((employees.size() - numberOfOneDeskClusters)<((chart.getNumberOfClusters() - numberOfOneDeskClusters) * 2)){
+			desiredNumberOfPairs = (employees.size() - numberOfOneDeskClusters)/2;
+		}
+		else{
+			desiredNumberOfPairs = chart.getNumberOfClusters() - numberOfOneDeskClusters;
+		}
+		Employee pairedEmployees[][] = new Employee[desiredNumberOfPairs][2];
 		
 		int numberOfEmployees = employees.size();
 		int c = 0;
@@ -80,11 +87,13 @@ public class Alg{
 						}
 					}
 				}	
-				pairedEmployees[c][0] = employees.get(x);
-				employees.get(x).setPartOfPair(true);
-				pairedEmployees[c][1] = employees.get(y);
-				employees.get(y).setPartOfPair(true);
-				c++;
+				if(c < desiredNumberOfPairs){
+					pairedEmployees[c][0] = employees.get(x);
+					employees.get(x).setPartOfPair(true);
+					pairedEmployees[c][1] = employees.get(y);
+					employees.get(y).setPartOfPair(true);
+					c++;
+				}
 			}
 		}
 		
@@ -189,22 +198,37 @@ public class Alg{
 		Cluster currentMostSimilarPairOfClusters[];
 		int currentMostSimilarPairOfPairs[]; //Indexes of employees
 		int firstPairIndex, secondPairIndex;
+		
 		for(int i = 0; i < numberOfClusters; i++){
+			
+			if(i >= (numberOfPairs - numberOfBathroomPairs)){
+				return;
+			}
 			currentMostSimilarPairOfClusters = getMostSimilarPairOfClusters(chart);
+
 			//Assign a pair of pairs to the pair of clusters.
 			//3 scenarios:
 			//	A) neither cluster has been assigned a pair
 			//  B) cluster 0 has been assigned a pair but not cluster 1
 			//  C) cluster 1 has been assigned a pair but not cluster 0
 			
-			if(!(currentMostSimilarPairOfClusters[0].hasBeenAssignedAPair() || currentMostSimilarPairOfClusters[1].hasBeenAssignedAPair())){ //Scenario A
+			if(!(currentMostSimilarPairOfClusters[0].hasBeenAssignedAPair() || currentMostSimilarPairOfClusters[1].hasBeenAssignedAPair()) && !(currentMostSimilarPairOfClusters[0].onlyOneDesk()) && !(currentMostSimilarPairOfClusters[1].onlyOneDesk())){ //Scenario A
 				//Assign the most similar pair of pairs (where neither pair has been assigned to a cluster) to this pair of clusters
-				currentMostSimilarPairOfPairs = getMostSimilarPairOfPairs(pairToPairSimilarities, pairs);
-				firstPairIndex = currentMostSimilarPairOfPairs[0];
-				secondPairIndex = currentMostSimilarPairOfPairs[1];
-				currentMostSimilarPairOfClusters[0].assignPairOfEmployees(pairs[firstPairIndex][0],pairs[firstPairIndex][1]);
-				currentMostSimilarPairOfClusters[1].assignPairOfEmployees(pairs[secondPairIndex][0],pairs[secondPairIndex][1]);
-				i++; //An extra increment, since two clusters were assigned this time instead of 1. 
+				if(!((i+2) > (numberOfPairs - numberOfBathroomPairs))){
+					currentMostSimilarPairOfPairs = getMostSimilarPairOfPairs(pairToPairSimilarities, pairs);
+					firstPairIndex = currentMostSimilarPairOfPairs[0];
+					secondPairIndex = currentMostSimilarPairOfPairs[1];
+					currentMostSimilarPairOfClusters[0].assignPairOfEmployees(pairs[firstPairIndex][0],pairs[firstPairIndex][1]);
+					currentMostSimilarPairOfClusters[1].assignPairOfEmployees(pairs[secondPairIndex][0],pairs[secondPairIndex][1]);
+					i++; //An extra increment, since two clusters were assigned this time instead of 1. 	
+				}
+				else{
+					currentMostSimilarPairOfPairs = getMostSimilarPairOfPairs(pairToPairSimilarities, pairs);
+					firstPairIndex = currentMostSimilarPairOfPairs[0];
+					
+					currentMostSimilarPairOfClusters[0].assignPairOfEmployees(pairs[firstPairIndex][0],pairs[firstPairIndex][1]);
+					return;
+				}
 			}
 			else if(currentMostSimilarPairOfClusters[0].hasBeenAssignedAPair()){ //Scenario B
 				//Assign the pair that is most similar to the pair at cluster 0 to cluster 1.
@@ -226,7 +250,7 @@ public class Alg{
 				
 				currentMostSimilarPairOfClusters[1].assignPairOfEmployees(pairs[secondPairIndex][0],pairs[secondPairIndex][1]);
 			}
-			else{ //Scenario C
+			else if(currentMostSimilarPairOfClusters[1].hasBeenAssignedAPair()){ //Scenario C+
 				//Assign the pair that is most similar to the pair at cluster 1 to cluster 0.
 				int lockedPairIndex = 0;
 				Employee firstPairedEmployee = currentMostSimilarPairOfClusters[1].getPairedEmployee1();
@@ -246,6 +270,32 @@ public class Alg{
 				
 				currentMostSimilarPairOfClusters[0].assignPairOfEmployees(pairs[secondPairIndex][0],pairs[secondPairIndex][1]);
 			}
+			else{
+				//One cluster has one employee. The other cluster needs a pair.
+				Employee soleEmployee = null;
+				int identifier;
+				if(currentMostSimilarPairOfClusters[0].onlyOneDesk()){
+					soleEmployee = currentMostSimilarPairOfClusters[0].getEmployeeByIndex(0);
+					identifier = 1;
+				}
+				else{
+					soleEmployee = currentMostSimilarPairOfClusters[1].getEmployeeByIndex(0);
+					identifier = 0;
+				}
+				
+				//Find the pair that's most similar to this employee and assign it to the array.
+				double currMax = -10000;
+				int chosenPair = 0;
+				for(int k = 0; k < pairs.length; k++){
+					double currSim1 = chart.getSpecificEmployeeSimilarity(pairs[k][0].getSpotInArray(), soleEmployee.getSpotInArray());
+					double currSim2 = chart.getSpecificEmployeeSimilarity(pairs[k][1].getSpotInArray(), soleEmployee.getSpotInArray());
+					if((currSim1 + currSim2) > currMax && pairs[k][0].waitingToBeAssigned()){
+						chosenPair = k;
+						currMax = currSim1 + currSim2;
+					}
+				}
+				currentMostSimilarPairOfClusters[identifier].assignPairOfEmployees(pairs[chosenPair][0], pairs[chosenPair][1]);
+			}
 		}
 		
 	}
@@ -255,6 +305,7 @@ public class Alg{
 		double maxSimilarity = 0;
 		int numberOfPairs = pairToPairSimilarities.length;
 		boolean firstPairAvailable, secondPairAvailable;
+		boolean foundAPair = false;
 		for(int i = 0; i < numberOfPairs; i++){
 			firstPairAvailable = pairs[i][0].waitingToBeAssigned();
 			
@@ -263,10 +314,20 @@ public class Alg{
 					secondPairAvailable = pairs[j][0].waitingToBeAssigned();
 					if(pairToPairSimilarities[i][j] > maxSimilarity && secondPairAvailable){
 						maxSimilarity = pairToPairSimilarities[i][j];
+						foundAPair = true;
 						pair[0] = i;
 						pair[1] = j;
 					}
 				}				
+			}
+		}
+		
+		if(!foundAPair){
+			for(int i = 0; i < numberOfPairs; i++){
+				if(pairs[i][0].waitingToBeAssigned()){
+					pair[0] = i;
+					pair[1] = i;
+				}
 			}
 		}
 		return pair;
@@ -331,13 +392,14 @@ public class Alg{
 		for(int i = 0; i < numberOfClusters; i++){
 			for(int j = 0; j < numberOfClusters; j++){
 				currentSimilarity = chart.getSpecificClusterSimilarity(i, j);
-				if(currentSimilarity > maxSimilarity && (!chart.getCluster(i).hasBeenAssignedAPair() || !chart.getCluster(j).hasBeenAssignedAPair())){
+				if(currentSimilarity > maxSimilarity && ((!chart.getCluster(i).hasBeenAssignedAPair() && !chart.getCluster(i).onlyOneDesk())||(!chart.getCluster(j).hasBeenAssignedAPair() && !chart.getCluster(j).onlyOneDesk()))){
 					maxSimilarity = currentSimilarity;
 					currMaxI = i;
 					currMaxJ = j;
 				}
 			}
 		}
+
 		pair[0] = chart.getCluster(currMaxI);
 		pair[1] = chart.getCluster(currMaxJ);
 		return pair;
@@ -373,16 +435,18 @@ public class Alg{
 		int pair1, pair2;
 		for(int i = 0; i < chart.getNumberOfClusters(); i++){
 			
-			pair1 = chart.getCluster(i).getPairedEmployee1().getSpotInArray();
-			pair2 = chart.getCluster(i).getPairedEmployee2().getSpotInArray();
-			
-			for(int j = 0; j < employees.size(); j++){
-				if(!employees.get(j).partOfPair()){ //If the current employee isn't part of a pair:
-					if(similarities[pair1][j] < 0 || similarities[pair2][j] < 0){
-						sharedSimilarities[pair1][j] = -1.0;
-					}
-					else{
-						sharedSimilarities[pair1][j] = (similarities[pair1][j] + similarities[pair2][j]) / 2;
+			if(chart.getCluster(i).hasBeenAssignedAPair()){
+				pair1 = chart.getCluster(i).getPairedEmployee1().getSpotInArray();
+				pair2 = chart.getCluster(i).getPairedEmployee2().getSpotInArray();
+				
+				for(int j = 0; j < employees.size(); j++){
+					if(!employees.get(j).partOfPair()){ //If the current employee isn't part of a pair:
+						if(similarities[pair1][j] < 0 || similarities[pair2][j] < 0){
+							sharedSimilarities[pair1][j] = -1.0;
+						}
+						else{
+							sharedSimilarities[pair1][j] = (similarities[pair1][j] + similarities[pair2][j]) / 2;
+						}
 					}
 				}
 			}
@@ -430,7 +494,7 @@ public class Alg{
 				currentHighestSimilarity = -1;
 				indexOfCurrentHighestCluster = -1;
 				for(int j = 0; j < chart.getNumberOfClusters(); j++){
-					if(chart.getCluster(j).getNumberOfOpenDesks() > 0){
+					if(chart.getCluster(j).getNumberOfOpenDesks() > 0 && chart.getCluster(j).hasBeenAssignedAPair()){
 						//Determine our employee's similarity to the pair at the current cluster. If it's higher than the 
 						//	currentHighestSimilarity, mark it as the new highest (including noting the index of the cluster).
 						currentSimilarity = sharedSimilarities[chart.getCluster(j).getPairedEmployee1().getSpotInArray()][currentEmployeeId];

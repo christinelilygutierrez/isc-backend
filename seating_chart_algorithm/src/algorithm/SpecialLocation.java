@@ -26,6 +26,10 @@ class SpecialLocation {
 			this.type = "airconditioner";
 			stringIdentifier = "AC";
 			break;
+		case 7:
+			this.type = "kitchen";
+			stringIdentifier = "K";
+			break;
 		}
 		this.point = point;
 		pseudoCluster = new Cluster((int)point.getX(), (int)point.getY());

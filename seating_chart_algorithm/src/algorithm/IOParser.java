@@ -21,36 +21,36 @@ class IOParser {
 	private ArrayList<Employee> employees;
 	private int[][] chart, chart2;
 	private double[][] employeeSimilarities;
-
+	
 	IOParser(File employeeFile, boolean differentiator){
 		this.employeeFile = employeeFile;
 		parseEmployeeJSON();
 	}
-
+	
 	IOParser(File employeeFile, File chartFile, File similarityFile){
 		this.employeeFile = employeeFile;
 		this.chartFile = chartFile;
 		this.similarityFile = similarityFile;
-
+		
 		parseChartJSON();
 		parseEmployeeJSON();
 		parseSimilarityJSON();
 	}
-
+	
 	@SuppressWarnings("unchecked")
 	void createOutputFile(Chart finalChart, File userOutputFile){
-
-		//Put employees in an array based on their desks.
+		
+		//Put employees in an array based on their desks. 
 		Employee arrayOfEmployees[][] = new Employee[chart.length][chart[0].length];
 		double currX, currY;
 		for(int i = 0; i < finalChart.getNumberOfClusters(); i++){
 			for(int j = 0; j < finalChart.getCluster(i).getNumberOfEmployees(); j++){
 				currX = finalChart.getCluster(i).getDesk(j).getPoint().getX();
 				currY = finalChart.getCluster(i).getDesk(j).getPoint().getY();
-				arrayOfEmployees[(int)currX][(int)currY] = finalChart.getCluster(i).getDesk(j).getEmployee();
+				arrayOfEmployees[(int)currX][(int)currY] = finalChart.getCluster(i).getDesk(j).getEmployee(); 
 			}
 		}
-
+		
 		JSONArray outerArray = new JSONArray();
 		for(int i = 1; i < (chart.length - 1); i++){ //Change to only include inner area (not border walls)
 			JSONArray innerArray = new JSONArray();
@@ -73,7 +73,7 @@ class IOParser {
 					JSONObject currentMeta = new JSONObject();
 					JSONObject currentType = new JSONObject();
 					currentType.put("id", "INVISIBLE");
-
+					
 					currentSpot.put("meta", currentMeta);
 					currentSpot.put("type", currentType);
 					currentSpot.put("userId", null);
@@ -81,21 +81,26 @@ class IOParser {
 				else if(chart[i][j] == 1){ //AKA desk
 					//Get employee at current desk.
 					Employee currentEmployee = arrayOfEmployees[i][j];
-
+					
 					JSONObject currentMeta = new JSONObject();
 					JSONObject currentType = new JSONObject();
 					currentType.put("desc", "Desk");
 					currentType.put("id", "DESK");
-
+					
 					currentSpot.put("meta", currentMeta);
 					currentSpot.put("type", currentType);
-					currentSpot.put("userId", currentEmployee.getID());
+					if(currentEmployee == null){
+						currentSpot.put("userId", null);
+					}
+					else{
+						currentSpot.put("userId", currentEmployee.getID());
+					}
 				}
 				else if(chart[i][j] == 2){ //AKA empty wall
 					JSONObject currentType = new JSONObject();
 					currentType.put("desc", "Wall");
 					currentType.put("id", "WALL");
-
+					
 					JSONObject currentOrientation = new JSONObject();
 					if((i % 2) == 0){
 						currentOrientation.put("desc", "Horizontal");
@@ -105,17 +110,17 @@ class IOParser {
 						currentOrientation.put("desc", "Vertical");
 						currentOrientation.put("id", "VERTICAL");
 					}
-
+					
 					currentType.put("orientation", currentOrientation);
-
+					
 					currentSpot.put("isPresent", false);
-					currentSpot.put("type", currentType);
+					currentSpot.put("type", currentType);	
 				}
 				else if(chart[i][j] == 3){ //AKA wall
 					JSONObject currentType = new JSONObject();
 					currentType.put("desc", "Wall");
 					currentType.put("id", "WALL");
-
+					
 					JSONObject currentOrientation = new JSONObject();
 					if((i % 2) == 0){
 						currentOrientation.put("desc", "Horizontal");
@@ -125,28 +130,28 @@ class IOParser {
 						currentOrientation.put("desc", "Vertical");
 						currentOrientation.put("id", "VERTICAL");
 					}
-
+					
 					currentType.put("orientation", currentOrientation);
-
+					
 					currentSpot.put("isPresent", true);
 					currentSpot.put("type", currentType);
-
+					
 
 				}
-				else if(chart[i][j] == 4){ //AKA restroom
+				else if(chart[i][j] == 4){ //AKA restroom 
 					JSONObject currentMeta = new JSONObject();
 					JSONObject currentType = new JSONObject();
 					currentType.put("id", "RESTROOM");
-
+					
 					currentSpot.put("meta", currentMeta);
 					currentSpot.put("type", currentType);
 					currentSpot.put("userId", null);
 				}
-				else if(chart[i][j] == 5){ //AKA conference
+				else if(chart[i][j] == 5){ //AKA conference 
 					JSONObject currentMeta = new JSONObject();
 					JSONObject currentType = new JSONObject();
 					currentType.put("id", "CONFERENCE");
-
+					
 					currentSpot.put("meta", currentMeta);
 					currentSpot.put("type", currentType);
 					currentSpot.put("userId", null);
@@ -155,7 +160,16 @@ class IOParser {
 					JSONObject currentMeta = new JSONObject();
 					JSONObject currentType = new JSONObject();
 					currentType.put("id", "AIRCONDITIONER");
-
+					
+					currentSpot.put("meta", currentMeta);
+					currentSpot.put("type", currentType);
+					currentSpot.put("userId", null);
+				}
+				else if(chart[i][j] == 7){ //AKA Kitchen
+					JSONObject currentMeta = new JSONObject();
+					JSONObject currentType = new JSONObject();
+					currentType.put("id", "KITCHEN");
+					
 					currentSpot.put("meta", currentMeta);
 					currentSpot.put("type", currentType);
 					currentSpot.put("userId", null);
@@ -164,12 +178,12 @@ class IOParser {
 					JSONObject currentMeta = new JSONObject();
 					JSONObject currentType = new JSONObject();
 					currentType.put("id", "EMPTY");
-
+					
 					currentSpot.put("meta", currentMeta);
 					currentSpot.put("type", currentType);
 					currentSpot.put("userId", null);
 				}
-
+				
 				innerArray.add(currentSpot);
 			}
 			outerArray.add(innerArray);
@@ -181,7 +195,7 @@ class IOParser {
 		else{
 			outputFile = userOutputFile;
 		}
-
+		
 		try {
 			//outputFile = new File("Output.json");
 			FileWriter fileWriter = new FileWriter(outputFile);
@@ -193,12 +207,12 @@ class IOParser {
 			e.printStackTrace();
 		}
 	}
-
+		
 	private void parseSimilarityJSON(){
 		employeeSimilarities = new double[employees.size()][employees.size()];
-
+		
 		JSONParser parser = new JSONParser();
-
+		
 		Object obj = null;
 		try {
 			obj = parser.parse(new FileReader(similarityFile));
@@ -213,21 +227,22 @@ class IOParser {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
+		
 		JSONArray jsonArray = (JSONArray) obj;
-
+		
 		for(int i = 0; i < jsonArray.size(); i++){
 			JSONObject currSim = (JSONObject) jsonArray.get(i);
-
+			
 			int spotInArray1 = getSpotInArrayByID(toIntExact((long)currSim.get("employeeId1")));
 			int spotInArray2 = getSpotInArrayByID(toIntExact((long)currSim.get("employeeId2")));
-
-			employeeSimilarities[spotInArray1][spotInArray2] = (double)currSim.get("similarity");
-			employeeSimilarities[spotInArray2][spotInArray1] = (double)currSim.get("similarity");
+			
+			Long currentSim = new Long((long)currSim.get("similarity"));
+			employeeSimilarities[spotInArray1][spotInArray2] = currentSim.doubleValue();
+			employeeSimilarities[spotInArray2][spotInArray1] = currentSim.doubleValue();
 		}
-
+		
 	}
-
+	
 	private int getSpotInArrayByID(int id){
 		for(int i = 0; i < employees.size(); i++){
 			if(employees.get(i).getID() == id){
@@ -236,10 +251,10 @@ class IOParser {
 		}
 		return 0;
 	}
-
+	
 	private void parseEmployeeJSON(){
 		employees = new ArrayList<Employee>();
-
+		
 		JSONParser parser = new JSONParser();
 
 		Object obj = null;
@@ -255,33 +270,33 @@ class IOParser {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
+		
 		JSONArray jsonArray = (JSONArray) obj;
-
+		
 		for(int i = 0; i < jsonArray.size(); i++){
-			//Make a new employee out of employee information at current object.
+			//Make a new employee out of employee information at current object. 
 			JSONObject currentEmployee = (JSONObject) jsonArray.get(i);
-
+			
 			employees.add(new Employee(toIntExact((long)currentEmployee.get("employeeID"))));
-
+			
 			int currentRestroomUsage = toIntExact((long)currentEmployee.get("restroomUsage"));
 			int currentNoisePreference = toIntExact((long)currentEmployee.get("noisePreference"));
 			int currentOutOfDesk = toIntExact((long)currentEmployee.get("outOfDesk"));
-
+			
 			employees.get(i).setRestroomUsage(currentRestroomUsage);
 			employees.get(i).setRestroomUsage(currentNoisePreference);
 			employees.get(i).setRestroomUsage(currentOutOfDesk);
 		}
-
+		
 		for(int i = 0; i < employees.size(); i++){
 			employees.get(i).setSpotInArray(i);
 		}
-
+		
 	}
-
+	
 	private void parseChartJSON(){
 		JSONParser parser = new JSONParser();
-
+		
 		Object obj = null;
 		try {
 			obj = parser.parse(new FileReader(chartFile));
@@ -296,9 +311,9 @@ class IOParser {
 			e.printStackTrace();
 		}
 
-
+		
 		JSONArray jsonArray = (JSONArray) obj;
-
+		
 		for(int h = 0; h < jsonArray.size(); h++){
 			JSONArray currentArray = (JSONArray) jsonArray.get(h);
 			if(h == 0){
@@ -310,20 +325,20 @@ class IOParser {
 				chart2[toIntExact((Long)currentID.get("row"))][toIntExact((Long)currentID.get("col"))] = spotToInt(currentSpot);
 			}
 		}
-
+		
 		dealWithInvisibleSpots();
-
+		
 		addWallBorder();
 	}
-
-	//Add border of 3s (to represent a wall) around the chart.
+	
+	//Add border of 3s (to represent a wall) around the chart. 
 	private void addWallBorder(){
 		int dim1 = chart2.length;
 		int dim2 = chart2[0].length;
-
+				
 		//Chart needs to be 2 bigger in each dimension;
 		chart = new int[dim1 + 2][dim2 + 2];
-
+		
 		for(int i = 0; i < (dim2 + 2); i++){
 			chart[0][i] = 3;
 		}
@@ -336,18 +351,18 @@ class IOParser {
 		for(int i = 0; i < (dim1 + 2); i++){
 			chart[i][dim2 + 1] = 3;
 		}
-
+		
 		for(int i = 0; i < dim1; i++){
 			for(int j = 0; j < dim2; j++){
 				chart[i + 1][j + 1] = chart2[i][j];
 			}
 		}
 	}
-
+	
 	private void dealWithInvisibleSpots(){
 		int dim1 = chart2.length;
 		int dim2 = chart2[0].length;
-
+		
 		for(int i = 0; i < dim1; i++){
 			for(int j = 0; j < dim2; j++){
 				if(chart2[i][j] == -1){
@@ -361,7 +376,7 @@ class IOParser {
 			}
 		}
 	}
-
+	
 	private boolean searchSurroundingPointsForAWall(int x, int y){
 		//Check 4 non-diagonal surrounding points for a wall.
 		int xMax = chart2.length;
@@ -388,7 +403,7 @@ class IOParser {
 		}
 		return false;
 	}
-
+	
 	private int spotToInt(JSONObject spot){
 		JSONObject typeObject = (JSONObject) spot.get("type");
 		String typeIDString = (String) typeObject.get("id");
@@ -403,6 +418,9 @@ class IOParser {
 		}
 		if(typeIDString.equalsIgnoreCase("airconditioner")){
 			return 6;
+		}
+		if(typeIDString.equalsIgnoreCase("kitchen")){
+			return 7;
 		}
 		if(typeIDString.equalsIgnoreCase("wall")){
 			boolean isPresent = (boolean) spot.get("isPresent");
@@ -426,7 +444,7 @@ class IOParser {
 	int[][] getChartIntegerArray(){
 		return chart;
 	}
-
+	
 	double[][] getEmployeeSimilaritiesArray(){
 		return employeeSimilarities;
 	}

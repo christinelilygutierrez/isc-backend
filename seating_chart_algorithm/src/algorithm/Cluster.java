@@ -164,6 +164,10 @@ class Cluster {
 		return openDesksRemaining;
 	}
 	
+	void fakeAPair(){
+		hasAPair = true;
+	}
+	
 	void assignToDesk(Employee e){
 		int i = 0;
 		while(i < numberOfDesks){

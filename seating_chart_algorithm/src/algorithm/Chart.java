@@ -80,6 +80,10 @@ class Chart {
 					similarities[spotInSimilarityArray][j] = 0;
 					similarities[j][spotInSimilarityArray] = 0;
 					break;
+				case "kitchen":
+					similarities[spotInSimilarityArray][j] = 0;
+					similarities[j][spotInSimilarityArray] = 0;
+					break;
 				}
 			}
 		}
